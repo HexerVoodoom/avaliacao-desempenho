@@ -164,13 +164,29 @@ Cada fase termina com um **gate de qualidade** (não é uma etapa separada no fi
 
 - [x] **Fase 0 — Fundação:** monorepo (`npm workspaces`), `packages/domain` (tipos + regras de escala), `packages/supabase` (schema SQL completo com RLS multi-tenant + seed da biblioteca global de competências), scaffolds de `apps/client-app` e `apps/studio-admin`.
 - [x] **Fase 1 — Design system base:** `packages/ui` (tokens.css, theme.ts, Button/Badge de referência), `docs/design.md.template`, `docs/criterios-secoes.md`.
-- [ ] **Fase 2 — Studio-admin núcleo:** CRUD de organizations, upload de design.md, import de dados.
+- [~] **Fase 2 — Studio-admin núcleo:** formulário de novo cliente implementando `design.md.template` (marca, paleta com validador de contraste WCAG AA ao vivo — `packages/ui/src/lib/contrast.ts` —, taxonomia de cargos, métodos de avaliação habilitados). **Pendente:** persistência real em Supabase (projeto hospedado pausado — ver nota abaixo), upload de logo/favicon, campos de tipografia/forma/tom de voz do template, import de dados (CSV/JSON).
 - [ ] **Fase 3 — Client-app: Cadastros** (Membros, Cargos, Competências).
 - [ ] **Fase 4 — Client-app: Avaliações** (3 fluxos + resultado).
 - [ ] **Fase 5 — Histórico/Comparação.**
 - [ ] **Fase 6 — Manual + polish do Studio-admin.**
 - [ ] **Fase 7 — QA/Design/Segurança transversal** (roda a cada fase, não só ao final).
 
-Ainda faltam: projeto Supabase real provisionado (URL/anon key), autenticação
-ponta a ponta, e as telas funcionais de cada seção — isso é o conteúdo das
-Fases 2–6.
+**Bloqueio atual:** o projeto Supabase hospedado (US$10/mês, org Voila-Design,
+`sa-east-1`) foi cotado e a criação foi pausada a pedido do usuário — sem
+decisão de custo, `packages/supabase/migrations` não pode ser aplicado e não
+há auth real. Ambiente local (`supabase start` via Docker) também não é
+viável no sandbox de execução atual (sem daemon Docker). Enquanto isso,
+Fase 2+ avança nas partes independentes de backend (validação, formulários,
+regras de negócio em `packages/domain`); telas que exigem dado persistido
+ficam com mock local até a decisão.
+
+## 8. Uso dos plugins engineering/design (a partir da Fase 2)
+
+O usuário habilitou os plugins `engineering`, `design`, `figma` e
+`product-management`. A partir da Fase 2, os gates de qualidade por seção
+(§7 / `docs/criterios-secoes.md`) usam esses plugins em vez de agentes
+genéricos ad-hoc: revisão de código/decisões de arquitetura via
+`engineering`, crítica de design/acessibilidade via `design`. `figma` fica
+reservado para o caso de um cliente já ter a marca documentada em um arquivo
+Figma (extração de tokens); não se aplica ao design system base, que é
+código direto, sem mockup prévio.
