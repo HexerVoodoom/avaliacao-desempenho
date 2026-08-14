@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { Category, Competency, Evaluation, EvaluationSectionNote, Member, Organization } from '@studio/domain';
 import { average } from '@studio/domain';
-import { Badge } from '@studio/ui';
+import { Badge, PageHeader, Card, EmptyState, Field, Select, ListRowGroup, ListRow } from '@studio/ui';
 import { store } from '../store';
 import { categorizeEvaluation } from '../evaluation/categorize';
 import { EVALUATION_TYPE_LABEL } from '../evaluation/types';
@@ -106,91 +106,98 @@ export function HistoryPage({ organization }: HistoryPageProps) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 16 }}>Histórico e Comparação</h1>
+      <PageHeader title="Histórico e Comparação" />
 
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 24, maxWidth: 320 }}>
-        Membro
-        <select style={inputStyle} value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+      <Field label="Membro" className="mb-[var(--space-6)] max-w-[320px]">
+        <Select value={memberId} onChange={(e) => setMemberId(e.target.value)}>
           {members.map((m) => (
             <option key={m.id} value={m.id}>
               {m.firstName} {m.lastName}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
       {evaluations.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)' }}>Nenhuma avaliação concluída para este membro ainda.</p>
+        <EmptyState
+          title="Nenhuma avaliação concluída para este membro ainda"
+          description="Assim que uma avaliação for concluída, o histórico e a evolução por categoria aparecem aqui."
+        />
       )}
 
       {evaluations.length > 0 && (
         <>
-          <h2 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 8 }}>Evolução por categoria</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
+          <h2 className="mb-[var(--space-2)] text-[length:var(--font-size-lg)] font-[var(--font-weight-semibold)] tracking-[var(--letter-spacing-tight)]">
+            Evolução por categoria
+          </h2>
+          <div className="mb-[var(--space-8)] flex flex-col gap-[var(--space-3)]">
             {Array.from(trendByCategory.entries()).map(([categoryId, { categoryName, points }]) => (
-              <div key={categoryId} style={{ padding: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-base)' }}>
-                <strong style={{ fontSize: 'var(--font-size-sm)' }}>{categoryName}</strong>
-                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <Card key={categoryId}>
+                <strong className="text-[length:var(--font-size-sm)]">{categoryName}</strong>
+                <div className="mt-[var(--space-2)] flex flex-wrap gap-[var(--space-2)]">
                   {points.map((p, i) => {
                     const prev = points[i - 1];
                     const trend = prev ? (p.average > prev.average ? '↑' : p.average < prev.average ? '↓' : '→') : '';
                     return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Badge tone={trend === '↑' ? 'success' : trend === '↓' ? 'danger' : 'neutral'}>
-                          {new Date(p.date).toLocaleDateString('pt-BR')}: {p.average.toFixed(1)} {trend}
-                        </Badge>
-                      </div>
+                      <Badge key={i} tone={trend === '↑' ? 'success' : trend === '↓' ? 'danger' : 'neutral'}>
+                        {new Date(p.date).toLocaleDateString('pt-BR')}: {p.average.toFixed(1)} {trend}
+                      </Badge>
                     );
                   })}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
 
-          <h2 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 8 }}>Combinados (ações de melhoria)</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
-            {commitments.map((c, i) => (
-              <div key={i} style={{ padding: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-base)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                    {c.categoryName} · {new Date(c.evaluationDate).toLocaleDateString('pt-BR')}
-                  </span>
-                  <Badge tone={c.status === 'cumprido' ? 'success' : c.status === 'nao-cumprido' ? 'danger' : 'neutral'}>
-                    {c.status === 'cumprido' ? 'Cumprido' : c.status === 'nao-cumprido' ? 'Não cumprido' : 'Aguardando próxima avaliação'}
-                  </Badge>
-                </div>
-                <p style={{ fontSize: 'var(--font-size-sm)' }}>{c.action}</p>
-                {c.followUpAverage !== undefined && (
-                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-                    Média na época: {c.averageAtTheTime.toFixed(1)} → próxima avaliação: {c.followUpAverage.toFixed(1)}
-                  </p>
-                )}
-              </div>
-            ))}
-            {commitments.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum combinado registrado ainda.</p>}
+          <h2 className="mb-[var(--space-2)] text-[length:var(--font-size-lg)] font-[var(--font-weight-semibold)] tracking-[var(--letter-spacing-tight)]">
+            Combinados (ações de melhoria)
+          </h2>
+          <div className="mb-[var(--space-8)] flex flex-col gap-[var(--space-2)]">
+            {commitments.length === 0 ? (
+              <EmptyState title="Nenhum combinado registrado ainda" />
+            ) : (
+              commitments.map((c, i) => (
+                <Card key={i}>
+                  <div className="mb-[var(--space-1)] flex items-center justify-between gap-[var(--space-2)]">
+                    <span className="text-[length:var(--font-size-sm)] text-[var(--color-text-muted)]">
+                      {c.categoryName} · {new Date(c.evaluationDate).toLocaleDateString('pt-BR')}
+                    </span>
+                    <Badge tone={c.status === 'cumprido' ? 'success' : c.status === 'nao-cumprido' ? 'danger' : 'neutral'}>
+                      {c.status === 'cumprido' ? 'Cumprido' : c.status === 'nao-cumprido' ? 'Não cumprido' : 'Aguardando próxima avaliação'}
+                    </Badge>
+                  </div>
+                  <p className="m-0 text-[length:var(--font-size-sm)]">{c.action}</p>
+                  {c.followUpAverage !== undefined && (
+                    <p className="m-0 mt-[var(--space-1)] text-[length:var(--font-size-xs)] text-[var(--color-text-muted)]">
+                      Média na época: {c.averageAtTheTime.toFixed(1)} → próxima avaliação: {c.followUpAverage.toFixed(1)}
+                    </p>
+                  )}
+                </Card>
+              ))
+            )}
           </div>
 
-          <h2 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 8 }}>Avaliações deste membro</h2>
-          <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[...evaluations].reverse().map((ev) => (
-              <li key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-base)' }}>
-                <span>{new Date(ev.createdAt).toLocaleDateString('pt-BR')}</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Badge tone="neutral">{EVALUATION_TYPE_LABEL[ev.type]}</Badge>
-                  <Badge tone="primary">{average(ev.responses.map((r) => r.score)).toFixed(1)}/5</Badge>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <h2 className="mb-[var(--space-2)] text-[length:var(--font-size-lg)] font-[var(--font-weight-semibold)] tracking-[var(--letter-spacing-tight)]">
+            Avaliações deste membro
+          </h2>
+          <Card padded={false}>
+            <ListRowGroup>
+              {[...evaluations].reverse().map((ev) => (
+                <ListRow
+                  key={ev.id}
+                  title={new Date(ev.createdAt).toLocaleDateString('pt-BR')}
+                  actions={
+                    <>
+                      <Badge tone="neutral">{EVALUATION_TYPE_LABEL[ev.type]}</Badge>
+                      <Badge tone="primary">{average(ev.responses.map((r) => r.score)).toFixed(1)}/5</Badge>
+                    </>
+                  }
+                />
+              ))}
+            </ListRowGroup>
+          </Card>
         </>
       )}
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--color-border)',
-  fontSize: 'var(--font-size-sm)',
-};

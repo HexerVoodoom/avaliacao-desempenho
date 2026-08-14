@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { Evaluation, EvaluationType, Member, Organization, Role } from '@studio/domain';
 import { average } from '@studio/domain';
-import { Badge, Button } from '@studio/ui';
+import { Badge, Button, PageHeader, Card, EmptyState, Select, Input, ListRowGroup, ListRow } from '@studio/ui';
 import { store } from '../store';
 import { NewEvaluationWizard } from '../evaluation/NewEvaluationWizard';
 import { EVALUATION_TYPE_LABEL } from '../evaluation/types';
@@ -61,16 +61,18 @@ export function EvaluationsPage({ organization }: EvaluationsPageProps) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Avaliações</h1>
-        <Button variant="primary" onClick={() => setCreating(true)} disabled={organization.enabledEvaluationTypes.length === 0}>
-          Nova avaliação
-        </Button>
-      </div>
+      <PageHeader
+        title="Avaliações"
+        actions={
+          <Button variant="primary" onClick={() => setCreating(true)} disabled={organization.enabledEvaluationTypes.length === 0}>
+            Nova avaliação
+          </Button>
+        }
+      />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <select
-          style={inputStyle}
+      <div className="mb-[var(--space-4)] flex flex-wrap gap-[var(--space-2)]">
+        <Select
+          className="w-auto"
           value={filterMember}
           onChange={(e) => setFilterMember(e.target.value)}
           aria-label="Filtrar avaliações por membro"
@@ -81,9 +83,9 @@ export function EvaluationsPage({ organization }: EvaluationsPageProps) {
               {m.firstName} {m.lastName}
             </option>
           ))}
-        </select>
-        <select
-          style={inputStyle}
+        </Select>
+        <Select
+          className="w-auto"
           value={filterType}
           onChange={(e) => setFilterType(e.target.value as EvaluationType | 'all')}
           aria-label="Filtrar avaliações por método"
@@ -94,66 +96,62 @@ export function EvaluationsPage({ organization }: EvaluationsPageProps) {
               {EVALUATION_TYPE_LABEL[t]}
             </option>
           ))}
-        </select>
-        <input
+        </Select>
+        <Input
           type="date"
-          style={inputStyle}
+          className="w-auto"
           value={filterFrom}
           onChange={(e) => setFilterFrom(e.target.value)}
           aria-label="Data inicial do filtro"
         />
-        <input
+        <Input
           type="date"
-          style={inputStyle}
+          className="w-auto"
           value={filterTo}
           onChange={(e) => setFilterTo(e.target.value)}
           aria-label="Data final do filtro"
         />
       </div>
 
-      <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {filtered.map((ev) => {
-          const evaluatee = memberById.get(ev.evaluateeMemberId);
-          const evaluator = memberById.get(ev.evaluatorMemberId);
-          const role = roleById.get(ev.roleId);
-          const overallAverage = average(ev.responses.map((r) => r.score));
-          return (
-            <li
-              key={ev.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: 12,
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-base)',
-              }}
-            >
-              <div>
-                <strong>
-                  {evaluatee ? `${evaluatee.firstName} ${evaluatee.lastName ?? ''}` : 'Membro removido'}
-                </strong>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                  {role?.name ?? '—'} · avaliado por {evaluator ? evaluator.firstName : '—'} ·{' '}
-                  {new Date(ev.createdAt).toLocaleDateString('pt-BR')}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Badge tone="neutral">{EVALUATION_TYPE_LABEL[ev.type]}</Badge>
-                <Badge tone="primary">{overallAverage.toFixed(1)}/5</Badge>
-              </div>
-            </li>
-          );
-        })}
-        {filtered.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}>Nenhuma avaliação encontrada.</li>}
-      </ul>
+      {filtered.length === 0 ? (
+        <EmptyState
+          title="Nenhuma avaliação encontrada"
+          description={
+            evaluations.length === 0
+              ? 'Aplique a primeira avaliação de desempenho.'
+              : 'Ajuste os filtros para ver mais resultados.'
+          }
+        />
+      ) : (
+        <Card padded={false}>
+          <ListRowGroup>
+            {filtered.map((ev) => {
+              const evaluatee = memberById.get(ev.evaluateeMemberId);
+              const evaluator = memberById.get(ev.evaluatorMemberId);
+              const role = roleById.get(ev.roleId);
+              const overallAverage = average(ev.responses.map((r) => r.score));
+              return (
+                <ListRow
+                  key={ev.id}
+                  title={evaluatee ? `${evaluatee.firstName} ${evaluatee.lastName ?? ''}` : 'Membro removido'}
+                  meta={
+                    <>
+                      {role?.name ?? '—'} · avaliado por {evaluator ? evaluator.firstName : '—'} ·{' '}
+                      {new Date(ev.createdAt).toLocaleDateString('pt-BR')}
+                    </>
+                  }
+                  actions={
+                    <>
+                      <Badge tone="neutral">{EVALUATION_TYPE_LABEL[ev.type]}</Badge>
+                      <Badge tone="primary">{overallAverage.toFixed(1)}/5</Badge>
+                    </>
+                  }
+                />
+              );
+            })}
+          </ListRowGroup>
+        </Card>
+      )}
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--color-border)',
-  fontSize: 'var(--font-size-sm)',
-};

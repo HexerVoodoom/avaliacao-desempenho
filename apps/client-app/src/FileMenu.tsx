@@ -41,12 +41,12 @@ export function FileMenu() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-      <div style={{ display: 'flex', gap: 4 }}>
-        <Button variant="ghost" onClick={handleSave} style={{ justifyContent: 'flex-start', flex: 1 }}>
+    <div className="flex flex-col gap-[var(--space-1)]">
+      <div className="flex gap-[var(--space-1)]">
+        <Button variant="ghost" size="sm" onClick={handleSave} className="flex-1 justify-start">
           Salvar
         </Button>
-        <Button variant="ghost" onClick={handleLoadClick} style={{ justifyContent: 'flex-start', flex: 1 }}>
+        <Button variant="ghost" size="sm" onClick={handleLoadClick} className="flex-1 justify-start">
           Carregar
         </Button>
       </div>
@@ -55,10 +55,10 @@ export function FileMenu() {
         type="file"
         accept="application/json"
         onChange={handleFileChange}
-        style={{ display: 'none' }}
+        className="hidden"
       />
       {error && (
-        <div style={{ fontSize: 12, color: 'var(--color-danger)' }}>{error}</div>
+        <div className="text-[length:var(--font-size-xs)] text-[var(--color-danger)]">{error}</div>
       )}
     </div>
   );

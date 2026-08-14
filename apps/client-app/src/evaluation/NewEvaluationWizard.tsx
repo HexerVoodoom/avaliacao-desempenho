@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { Category, Competency, EvaluationType, Member, Organization, Role } from '@studio/domain';
-import { Button, Badge } from '@studio/ui';
+import { Button, Badge, PageHeader, Card, Field, Select } from '@studio/ui';
 import { store } from '../store';
 import { buildSections } from './buildSections';
 import { EvaluationRunner } from './EvaluationRunner';
@@ -118,19 +118,19 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
   }
 
   if (step === 'saving') {
-    return <p style={{ color: 'var(--color-text-muted)' }}>Salvando avaliação…</p>;
+    return <p className="text-[length:var(--font-size-md)] text-[var(--color-text-muted)]">Salvando avaliação…</p>;
   }
 
   if (step === 'save-failed') {
     return (
-      <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <h1 style={{ fontSize: 'var(--font-size-xl)', color: 'var(--color-danger)' }}>
+      <div className="flex max-w-[480px] flex-col gap-[var(--space-3)]">
+        <h1 className="text-[length:var(--font-size-xl)] font-[var(--font-weight-semibold)] text-[var(--color-danger)]">
           Não foi possível salvar a avaliação
         </h1>
-        <p style={{ color: 'var(--color-text-muted)' }}>
+        <p className="text-[length:var(--font-size-md)] text-[var(--color-text-muted)]">
           Suas respostas continuam nesta tela — nada foi perdido. Erro: {saveError}
         </p>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="flex gap-[var(--space-2)]">
           <Button variant="primary" onClick={() => runnerResult && persist(runnerResult)}>
             Tentar salvar de novo
           </Button>
@@ -169,87 +169,70 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
   }
 
   return (
-    <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Nova avaliação</h1>
+    <div className="max-w-[480px]">
+      <PageHeader title="Nova avaliação" />
 
-      <label style={fieldLabelStyle}>
-        Avaliador (quem está aplicando)
-        <select style={inputStyle} value={evaluatorId} onChange={(e) => setEvaluatorId(e.target.value)}>
-          <option value="">Selecione...</option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.firstName} {m.lastName} — {roleById.get(m.roleId)?.name ?? 'sem cargo'}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Card className="flex flex-col gap-[var(--space-4)]">
+        <Field label="Avaliador (quem está aplicando)">
+          <Select value={evaluatorId} onChange={(e) => setEvaluatorId(e.target.value)}>
+            <option value="">Selecione...</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.firstName} {m.lastName} — {roleById.get(m.roleId)?.name ?? 'sem cargo'}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-      <label style={fieldLabelStyle}>
-        Filtrar avaliado(a) por cargo (opcional)
-        <select style={inputStyle} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-          <option value="all">Todos os cargos</option>
-          {roles.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        <Field label="Filtrar avaliado(a) por cargo (opcional)">
+          <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+            <option value="all">Todos os cargos</option>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-      <label style={fieldLabelStyle}>
-        Avaliado(a)
-        <select style={inputStyle} value={evaluateeId} onChange={(e) => setEvaluateeId(e.target.value)}>
-          <option value="">Selecione...</option>
-          {filteredEvaluatees.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.firstName} {m.lastName} — {roleById.get(m.roleId)?.name ?? 'sem cargo'}
-            </option>
-          ))}
-        </select>
-      </label>
+        <Field label="Avaliado(a)">
+          <Select value={evaluateeId} onChange={(e) => setEvaluateeId(e.target.value)}>
+            <option value="">Selecione...</option>
+            {filteredEvaluatees.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.firstName} {m.lastName} — {roleById.get(m.roleId)?.name ?? 'sem cargo'}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-      {evaluateeRole && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Badge tone="primary">{evaluateeRole.type}</Badge>
-          <Badge tone="neutral">{evaluateeRole.name}</Badge>
+        {evaluateeRole && (
+          <div className="flex gap-[var(--space-2)]">
+            <Badge tone="primary">{evaluateeRole.type}</Badge>
+            <Badge tone="neutral">{evaluateeRole.name}</Badge>
+          </div>
+        )}
+
+        <Field label="Método de avaliação">
+          <Select value={evaluationType} onChange={(e) => setEvaluationType(e.target.value as EvaluationType)}>
+            <option value="">Selecione...</option>
+            {organization.enabledEvaluationTypes.map((t) => (
+              <option key={t} value={t}>
+                {EVALUATION_TYPE_LABEL[t]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <div className="flex gap-[var(--space-2)]">
+          <Button variant="primary" onClick={handleStart} disabled={!canStart}>
+            Iniciar avaliação
+          </Button>
+          <Button variant="ghost" onClick={onDone}>
+            Cancelar
+          </Button>
         </div>
-      )}
-
-      <label style={fieldLabelStyle}>
-        Método de avaliação
-        <select style={inputStyle} value={evaluationType} onChange={(e) => setEvaluationType(e.target.value as EvaluationType)}>
-          <option value="">Selecione...</option>
-          {organization.enabledEvaluationTypes.map((t) => (
-            <option key={t} value={t}>
-              {EVALUATION_TYPE_LABEL[t]}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Button variant="primary" onClick={handleStart} disabled={!canStart}>
-          Iniciar avaliação
-        </Button>
-        <Button variant="ghost" onClick={onDone}>
-          Cancelar
-        </Button>
-      </div>
+      </Card>
     </div>
   );
 }
-
-const fieldLabelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  fontSize: 'var(--font-size-sm)',
-  color: 'var(--color-text-muted)',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--color-border)',
-  fontSize: 'var(--font-size-sm)',
-};
