@@ -8,3 +8,4 @@ build/
 .turbo/
 .vite/
 coverage/
+*.tsbuildinfo
