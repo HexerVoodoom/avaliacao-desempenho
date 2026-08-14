@@ -6,10 +6,12 @@ import { store } from '../store';
 const DIALOGIC_TEMPLATE =
   'Pensando em [período/situações recentes], como você [ação relacionada à competência] e como avalia [efeito/resultado disso]?';
 
+type Editing = 'new' | Competency | null;
+
 export function CompetenciesPage() {
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [competencies, setCompetencies] = React.useState<Competency[]>([]);
-  const [creating, setCreating] = React.useState(false);
+  const [editing, setEditing] = React.useState<Editing>(null);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
 
   const refresh = React.useCallback(async () => {
@@ -50,30 +52,31 @@ export function CompetenciesPage() {
         title="Competências"
         description="Biblioteca global — usada por todos os cargos, de qualquer cliente."
         actions={
-          !creating && (
-            <Button variant="primary" onClick={() => setCreating(true)}>
+          !editing && (
+            <Button variant="primary" onClick={() => setEditing('new')}>
               Nova competência
             </Button>
           )
         }
       />
 
-      {creating && (
-        <NewCompetencyForm
+      {editing && (
+        <CompetencyForm
           categories={categories}
-          onCancel={() => setCreating(false)}
+          initialCompetency={editing === 'new' ? undefined : editing}
+          onCancel={() => setEditing(null)}
           onSaved={() => {
-            setCreating(false);
+            setEditing(null);
             refresh();
           }}
         />
       )}
 
-      {!creating && categories.length === 0 && (
+      {!editing && categories.length === 0 && (
         <EmptyState title="Nenhuma competência cadastrada ainda" description="Crie a primeira competência da biblioteca." />
       )}
 
-      {!creating &&
+      {!editing &&
         categories.map((cat) => (
           <section key={cat.id} className="mb-[var(--space-8)]">
             <h2 className="mb-[var(--space-1)] text-[length:var(--font-size-lg)] font-[var(--font-weight-semibold)] tracking-[var(--letter-spacing-tight)]">
@@ -96,13 +99,13 @@ export function CompetenciesPage() {
                       .sort((a, b) => a.order - b.order);
                     return (
                       <li key={comp.id} className="border-t border-[var(--color-border)] first:border-t-0">
-                        <button
-                          type="button"
-                          onClick={() => toggle(comp.id)}
-                          aria-expanded={isOpen}
-                          className="flex w-full items-center justify-between gap-[var(--space-4)] px-[var(--space-4)] py-[var(--space-3)] text-left hover:bg-[var(--color-surface-muted)] transition-colors focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]"
-                        >
-                          <span className="flex items-center gap-[var(--space-2)] min-w-0">
+                        <div className="flex w-full items-center justify-between gap-[var(--space-4)] px-[var(--space-4)] py-[var(--space-3)]">
+                          <button
+                            type="button"
+                            onClick={() => toggle(comp.id)}
+                            aria-expanded={isOpen}
+                            className="flex min-w-0 flex-1 items-center gap-[var(--space-2)] text-left focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]"
+                          >
                             <svg
                               width="14"
                               height="14"
@@ -116,12 +119,15 @@ export function CompetenciesPage() {
                             <span className="truncate text-[length:var(--font-size-base)] font-[var(--font-weight-semibold)] text-[var(--color-text-primary)]">
                               {comp.name}
                             </span>
-                          </span>
+                          </button>
                           <span className="flex shrink-0 items-center gap-[var(--space-2)]">
                             <Badge tone="neutral">{statements.length} afirmações</Badge>
                             <Badge tone="warning">{dialogic ? 1 : 0} base de diálogo</Badge>
+                            <Button variant="ghost" size="sm" onClick={() => setEditing(comp)}>
+                              Editar
+                            </Button>
                           </span>
-                        </button>
+                        </div>
                         {isOpen && (
                           <div className="flex flex-col gap-[var(--space-3)] px-[var(--space-4)] pb-[var(--space-4)] pl-[calc(var(--space-4)+22px)]">
                             {dialogic && (
@@ -158,17 +164,29 @@ export function CompetenciesPage() {
   );
 }
 
-interface NewCompetencyFormProps {
+interface CompetencyFormProps {
   categories: Category[];
+  initialCompetency?: Competency;
   onCancel: () => void;
   onSaved: () => void;
 }
 
-function NewCompetencyForm({ categories, onCancel, onSaved }: NewCompetencyFormProps) {
-  const [name, setName] = React.useState('');
-  const [categoryId, setCategoryId] = React.useState(categories[0]?.id ?? '');
-  const [dialogicText, setDialogicText] = React.useState('');
-  const [statements, setStatements] = React.useState<string[]>(['']);
+function CompetencyForm({ categories, initialCompetency, onCancel, onSaved }: CompetencyFormProps) {
+  const initialDialogic = initialCompetency?.questions.find((q) => q.type === 'dialogic')?.text ?? '';
+  const initialStatements = initialCompetency
+    ? initialCompetency.questions
+        .filter((q) => q.type === 'statement')
+        .sort((a, b) => a.order - b.order)
+        .map((q) => q.text)
+    : [''];
+
+  const [name, setName] = React.useState(initialCompetency?.name ?? '');
+  const [categoryId, setCategoryId] = React.useState(initialCompetency?.categoryId ?? categories[0]?.id ?? '');
+  const [dialogicText, setDialogicText] = React.useState(initialDialogic);
+  const [statements, setStatements] = React.useState<string[]>(
+    initialStatements.length > 0 ? initialStatements : ['']
+  );
+  const [error, setError] = React.useState<string | null>(null);
 
   function updateStatement(i: number, value: string) {
     setStatements((prev) => prev.map((s, idx) => (idx === i ? value : s)));
@@ -188,13 +206,23 @@ function NewCompetencyForm({ categories, onCancel, onSaved }: NewCompetencyFormP
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSave) return;
-    await store.competencyLibrary.addCompetency({
+    setError(null);
+    const input = {
       categoryId,
       name: name.trim(),
       dialogicText: dialogicText.trim(),
       statementTexts: validStatements,
-    });
-    onSaved();
+    };
+    try {
+      if (initialCompetency) {
+        await store.competencyLibrary.updateCompetency(initialCompetency.id, input);
+      } else {
+        await store.competencyLibrary.addCompetency(input);
+      }
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -245,9 +273,15 @@ function NewCompetencyForm({ categories, onCancel, onSaved }: NewCompetencyFormP
         </Button>
       </div>
 
+      {error && (
+        <p role="alert" className="text-[length:var(--font-size-sm)] text-[var(--color-danger)]">
+          Não foi possível salvar: {error}
+        </p>
+      )}
+
       <div className="flex gap-[var(--space-2)]">
         <Button type="submit" variant="primary" disabled={!canSave}>
-          Salvar competência
+          {initialCompetency ? 'Salvar alterações' : 'Salvar competência'}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
