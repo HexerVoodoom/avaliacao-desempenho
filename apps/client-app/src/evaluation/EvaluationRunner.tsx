@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { EvaluationType, ScoreValue } from '@studio/domain';
 import { SCALE_LABELS, improvementPromptFor, average } from '@studio/domain';
-import { Button, Badge } from '@studio/ui';
+import { Button, Badge, ConfirmDialog } from '@studio/ui';
 import type { RunnerResult, RunnerSection, SectionNoteDraft } from './types';
 
 interface EvaluationRunnerProps {
@@ -13,9 +13,24 @@ interface EvaluationRunnerProps {
 
 const SCORES: ScoreValue[] = [1, 2, 3, 4, 5];
 
+// Matches the semantic scale documented in brand/design-system.md (§2):
+// success = notas altas, warning = notas médias, danger = notas baixas.
+// Flagged by 2 of the 11 ProdSquad reviews (design-critic, product-designer)
+// as a real gap — the score buttons previously all looked the same
+// regardless of value, on the screen used live, in front of the person
+// being evaluated.
+const SCORE_COLOR: Record<ScoreValue, string> = {
+  1: 'var(--color-danger)',
+  2: 'var(--color-danger)',
+  3: 'var(--color-warning)',
+  4: 'var(--color-success)',
+  5: 'var(--color-success)',
+};
+
 export function EvaluationRunner({ evaluationType, sections, onFinish, onCancel }: EvaluationRunnerProps) {
   const [sectionIndex, setSectionIndex] = React.useState(0);
   const [result, setResult] = React.useState<RunnerResult>({ responses: {}, sectionNotes: {} });
+  const [confirmingCancel, setConfirmingCancel] = React.useState(false);
 
   const section = sections[sectionIndex];
   const scaleLabels = SCALE_LABELS[evaluationType];
@@ -37,6 +52,7 @@ export function EvaluationRunner({ evaluationType, sections, onFinish, onCancel 
 
   const answeredCount = section.items.filter((item) => result.responses[item.id]).length;
   const allAnswered = answeredCount === section.items.length;
+  const hasProgress = Object.keys(result.responses).length > 0;
 
   function setScore(itemId: string, score: ScoreValue) {
     setResult((prev) => ({
@@ -85,6 +101,19 @@ export function EvaluationRunner({ evaluationType, sections, onFinish, onCancel 
     }
   }
 
+  function requestCancel() {
+    // Discarding an in-progress evaluation is at least as destructive as
+    // deleting a role/member (both already go through ConfirmDialog) — this
+    // was the single most-agreed-on design finding across the ProdSquad
+    // review (design-critic + product-designer), and it's the screen used
+    // live, in front of the person being evaluated.
+    if (hasProgress) {
+      setConfirmingCancel(true);
+    } else {
+      onCancel();
+    }
+  }
+
   return (
     <div style={{ maxWidth: 640 }}>
       <div style={{ marginBottom: 4, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
@@ -109,6 +138,7 @@ export function EvaluationRunner({ evaluationType, sections, onFinish, onCancel 
                       key={i}
                       style={inputStyle}
                       placeholder={`Palavra-chave ${i + 1}`}
+                      aria-label={`Palavra-chave ${i + 1} para: ${item.text}`}
                       value={response?.keywords?.[i] ?? ''}
                       onChange={(e) => setKeyword(item.id, i as 0 | 1 | 2, e.target.value)}
                     />
@@ -116,25 +146,31 @@ export function EvaluationRunner({ evaluationType, sections, onFinish, onCancel 
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {SCORES.map((score) => (
-                  <button
-                    key={score}
-                    type="button"
-                    onClick={() => setScore(item.id, score)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: response?.score === score ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      background: response?.score === score ? 'var(--color-primary)' : 'var(--color-surface)',
-                      color: response?.score === score ? 'var(--color-text-on-primary)' : 'var(--color-text-primary)',
-                      cursor: 'pointer',
-                      fontSize: 'var(--font-size-sm)',
-                    }}
-                  >
-                    {score} — {scaleLabels[score]}
-                  </button>
-                ))}
+              <div role="radiogroup" aria-label={`Nota para: ${item.text}`} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {SCORES.map((score) => {
+                  const selected = response?.score === score;
+                  return (
+                    <button
+                      key={score}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setScore(item.id, score)}
+                      style={{
+                        minHeight: 44,
+                        padding: '8px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: `2px solid ${selected ? SCORE_COLOR[score] : 'var(--color-border)'}`,
+                        background: selected ? SCORE_COLOR[score] : 'var(--color-surface)',
+                        color: selected ? 'var(--color-text-on-primary)' : 'var(--color-text-primary)',
+                        cursor: 'pointer',
+                        fontSize: 'var(--font-size-sm)',
+                      }}
+                    >
+                      {score} — {scaleLabels[score]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -165,7 +201,7 @@ export function EvaluationRunner({ evaluationType, sections, onFinish, onCancel 
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
-        <Button variant="ghost" onClick={onCancel}>
+        <Button variant="ghost" onClick={requestCancel}>
           Cancelar avaliação
         </Button>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -177,6 +213,17 @@ export function EvaluationRunner({ evaluationType, sections, onFinish, onCancel 
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmingCancel}
+        onOpenChange={setConfirmingCancel}
+        title="Cancelar esta avaliação?"
+        description="Todas as respostas registradas até agora serão perdidas. Essa ação não pode ser desfeita."
+        confirmLabel="Cancelar avaliação"
+        cancelLabel="Voltar"
+        tone="danger"
+        onConfirm={onCancel}
+      />
     </div>
   );
 }

@@ -227,22 +227,44 @@ alter table evaluations enable row level security;
 alter table evaluation_responses enable row level security;
 alter table evaluation_section_notes enable row level security;
 
+-- NOTE (ProdSquad security-architect finding, severity Alto): the original
+-- "for all" policy let ANY org member — including the 'avaliador' role —
+-- update or delete ANY evaluation in the org, not just their own. Ideally
+-- UPDATE/DELETE would be scoped to "the member who authored this
+-- evaluation", but `members` (the evaluee/evaluator domain rows) has no
+-- link to `auth.users` yet — that's a real schema gap, not something this
+-- policy alone can fix. Until `members.user_id` exists, the safest
+-- available tightening is: any org member can create an evaluation
+-- (matches today's UI, which only ever creates), but only an org admin can
+-- modify or delete one after the fact.
 create policy "org members read evaluations" on evaluations
   for select using (is_org_member(organization_id));
-create policy "org members manage evaluations" on evaluations
-  for all using (is_org_member(organization_id)) with check (is_org_member(organization_id));
+create policy "org members create evaluations" on evaluations
+  for insert with check (is_org_member(organization_id));
+create policy "org admins update evaluations" on evaluations
+  for update using (is_org_admin(organization_id)) with check (is_org_admin(organization_id));
+create policy "org admins delete evaluations" on evaluations
+  for delete using (is_org_admin(organization_id));
 
 create policy "org members read evaluation_responses" on evaluation_responses
   for select using (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)));
-create policy "org members manage evaluation_responses" on evaluation_responses
-  for all using (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)))
-  with check (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)));
+create policy "org members create evaluation_responses" on evaluation_responses
+  for insert with check (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)));
+create policy "org admins update evaluation_responses" on evaluation_responses
+  for update using (is_org_admin((select organization_id from evaluations where evaluations.id = evaluation_id)))
+  with check (is_org_admin((select organization_id from evaluations where evaluations.id = evaluation_id)));
+create policy "org admins delete evaluation_responses" on evaluation_responses
+  for delete using (is_org_admin((select organization_id from evaluations where evaluations.id = evaluation_id)));
 
 create policy "org members read evaluation_section_notes" on evaluation_section_notes
   for select using (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)));
-create policy "org members manage evaluation_section_notes" on evaluation_section_notes
-  for all using (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)))
-  with check (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)));
+create policy "org members create evaluation_section_notes" on evaluation_section_notes
+  for insert with check (is_org_member((select organization_id from evaluations where evaluations.id = evaluation_id)));
+create policy "org admins update evaluation_section_notes" on evaluation_section_notes
+  for update using (is_org_admin((select organization_id from evaluations where evaluations.id = evaluation_id)))
+  with check (is_org_admin((select organization_id from evaluations where evaluations.id = evaluation_id)));
+create policy "org admins delete evaluation_section_notes" on evaluation_section_notes
+  for delete using (is_org_admin((select organization_id from evaluations where evaluations.id = evaluation_id)));
 
 -- ---------------------------------------------------------------------------
 -- Audit log (append-only, admins can read)

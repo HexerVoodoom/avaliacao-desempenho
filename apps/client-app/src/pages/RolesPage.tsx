@@ -14,6 +14,7 @@ export function RolesPage({ organization }: RolesPageProps) {
   const [editing, setEditing] = React.useState<Role | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Role | null>(null);
   const [blockedDeleteRole, setBlockedDeleteRole] = React.useState<Role | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const [filterType, setFilterType] = React.useState<string>('all');
   const [search, setSearch] = React.useState('');
@@ -40,8 +41,15 @@ export function RolesPage({ organization }: RolesPageProps) {
   });
 
   async function requestDelete(role: Role) {
-    const usedByMembers = (await store.members.list(organization.id)).some((m) => m.roleId === role.id);
-    if (usedByMembers) {
+    // Previously only checked Members — a role referenced solely by past
+    // Evaluations (e.g. the member who held it was later moved to a
+    // different role) could still be deleted, silently orphaning
+    // Evaluation.roleId (ProdSquad finding, staff-backend + qa-sweeper).
+    const [usedByMembers, usedByEvaluations] = await Promise.all([
+      store.members.list(organization.id).then((members) => members.some((m) => m.roleId === role.id)),
+      store.evaluations.list(organization.id).then((evals) => evals.some((e) => e.roleId === role.id)),
+    ]);
+    if (usedByMembers || usedByEvaluations) {
       setBlockedDeleteRole(role);
       return;
     }
@@ -50,13 +58,23 @@ export function RolesPage({ organization }: RolesPageProps) {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-    await store.roles.remove(deleteTarget.id);
-    setDeleteTarget(null);
-    refresh();
+    try {
+      await store.roles.remove(deleteTarget.id);
+      setDeleteTarget(null);
+      setDeleteError(null);
+      refresh();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
     <div>
+      {deleteError && (
+        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)', marginBottom: 12 }}>
+          Não foi possível remover: {deleteError}
+        </p>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Cargos</h1>
         {!editing && (
@@ -157,7 +175,7 @@ export function RolesPage({ organization }: RolesPageProps) {
         open={!!blockedDeleteRole}
         onOpenChange={(open) => !open && setBlockedDeleteRole(null)}
         title="Não é possível remover este cargo"
-        description={`"${blockedDeleteRole?.name}" tem membros vinculados. Reatribua-os a outro cargo antes de excluir.`}
+        description={`"${blockedDeleteRole?.name}" tem membros e/ou avaliações vinculadas. Reatribua os membros a outro cargo antes de excluir.`}
         confirmLabel="Entendi"
         cancelLabel="Fechar"
         onConfirm={() => setBlockedDeleteRole(null)}
@@ -223,41 +241,48 @@ function RoleForm({ organization, categories, competencies, initialRole, onCance
     return count;
   }
 
+  const [error, setError] = React.useState<string | null>(null);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    setError(null);
 
-    const roleId = initialRole
-      ? initialRole.id
-      : (
-          // Created in two steps because RoleActivity/RoleCompetencyLink carry
-          // the parent roleId, which only exists once the role itself has one.
-          await store.roles.create({
-            organizationId: organization.id,
-            name: name.trim(),
-            type,
-            activities: [],
-            competencyLinks: [],
-          })
-        ).id;
+    try {
+      const roleId = initialRole
+        ? initialRole.id
+        : (
+            // Created in two steps because RoleActivity/RoleCompetencyLink carry
+            // the parent roleId, which only exists once the role itself has one.
+            await store.roles.create({
+              organizationId: organization.id,
+              name: name.trim(),
+              type,
+              activities: [],
+              competencyLinks: [],
+            })
+          ).id;
 
-    const roleActivities: RoleActivity[] = activities.map((text, order) => ({
-      id: `${roleId}-act-${order}`,
-      roleId,
-      text,
-      order,
-    }));
-
-    const competencyLinks: RoleCompetencyLink[] = Array.from(links.entries())
-      .filter(([, ids]) => ids.size > 0)
-      .map(([competencyId, ids]) => ({
+      const roleActivities: RoleActivity[] = activities.map((text, order) => ({
+        id: `${roleId}-act-${order}`,
         roleId,
-        competencyId,
-        selectedQuestionIds: Array.from(ids),
+        text,
+        order,
       }));
 
-    await store.roles.update(roleId, { name: name.trim(), type, activities: roleActivities, competencyLinks });
-    onSaved();
+      const competencyLinks: RoleCompetencyLink[] = Array.from(links.entries())
+        .filter(([, ids]) => ids.size > 0)
+        .map(([competencyId, ids]) => ({
+          roleId,
+          competencyId,
+          selectedQuestionIds: Array.from(ids),
+        }));
+
+      await store.roles.update(roleId, { name: name.trim(), type, activities: roleActivities, competencyLinks });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -347,6 +372,12 @@ function RoleForm({ organization, categories, competencies, initialRole, onCance
           ))}
         </Accordion>
       </section>
+
+      {error && (
+        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)' }}>
+          Não foi possível salvar: {error}
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: 8 }}>
         <Button type="submit" variant="primary">

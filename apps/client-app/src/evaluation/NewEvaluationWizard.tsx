@@ -12,7 +12,7 @@ interface NewEvaluationWizardProps {
   onDone: () => void;
 }
 
-type Step = 'setup' | 'run' | 'result';
+type Step = 'setup' | 'run' | 'saving' | 'save-failed' | 'result';
 
 export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizardProps) {
   const [step, setStep] = React.useState<Step>('setup');
@@ -29,6 +29,7 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
   const [sections, setSections] = React.useState<RunnerSection[]>([]);
   const [runnerResult, setRunnerResult] = React.useState<RunnerResult | null>(null);
   const [createdAt, setCreatedAt] = React.useState('');
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     Promise.all([
@@ -62,42 +63,83 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
   }
 
   async function handleFinishRun(result: RunnerResult) {
+    // The result screen must only ever show a SAVED evaluation — 4 of the 11
+    // ProdSquad personas independently flagged the previous version (which
+    // called setStep('result') before persistence resolved) as a silent
+    // data-loss bug: if the write failed, the evaluator saw a normal result
+    // screen for a session that was never recorded. Persist first; only
+    // advance to 'result' once both writes actually succeed.
     setRunnerResult(result);
-    setStep('result');
+    setStep('saving');
+    setSaveError(null);
+    await persist(result);
+  }
 
+  async function persist(result: RunnerResult) {
     if (!evaluator || !evaluatee || !evaluateeRole || !evaluationType) return;
+    try {
+      // Two-step, same reasoning as RoleForm.handleSubmit: responses/notes
+      // carry the parent evaluationId, which only exists once the
+      // evaluation itself has an id.
+      const evaluation = await store.evaluations.create({
+        organizationId: organization.id,
+        type: evaluationType,
+        status: 'completed',
+        evaluatorMemberId: evaluator.id,
+        evaluateeMemberId: evaluatee.id,
+        roleId: evaluateeRole.id,
+        completedAt: new Date().toISOString(),
+        responses: [],
+        sectionNotes: [],
+      });
 
-    // Two-step, same reasoning as RoleForm.handleSubmit: responses/notes carry
-    // the parent evaluationId, which only exists once the evaluation itself
-    // has an id.
-    const evaluation = await store.evaluations.create({
-      organizationId: organization.id,
-      type: evaluationType,
-      status: 'completed',
-      evaluatorMemberId: evaluator.id,
-      evaluateeMemberId: evaluatee.id,
-      roleId: evaluateeRole.id,
-      completedAt: new Date().toISOString(),
-      responses: [],
-      sectionNotes: [],
-    });
+      await store.evaluations.update(evaluation.id, {
+        responses: Object.entries(result.responses).map(([targetId, r]) => ({
+          id: `${evaluation.id}-${targetId}`,
+          evaluationId: evaluation.id,
+          targetId,
+          score: r.score,
+          keywords: r.keywords,
+        })),
+        sectionNotes: Object.entries(result.sectionNotes).map(([categoryId, n]) => ({
+          id: `${evaluation.id}-${categoryId}`,
+          evaluationId: evaluation.id,
+          categoryId,
+          observation: n.observation || undefined,
+          improvementAction: n.improvementAction || undefined,
+        })),
+      });
 
-    await store.evaluations.update(evaluation.id, {
-      responses: Object.entries(result.responses).map(([targetId, r]) => ({
-        id: `${evaluation.id}-${targetId}`,
-        evaluationId: evaluation.id,
-        targetId,
-        score: r.score,
-        keywords: r.keywords,
-      })),
-      sectionNotes: Object.entries(result.sectionNotes).map(([categoryId, n]) => ({
-        id: `${evaluation.id}-${categoryId}`,
-        evaluationId: evaluation.id,
-        categoryId,
-        observation: n.observation || undefined,
-        improvementAction: n.improvementAction || undefined,
-      })),
-    });
+      setStep('result');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
+      setStep('save-failed');
+    }
+  }
+
+  if (step === 'saving') {
+    return <p style={{ color: 'var(--color-text-muted)' }}>Salvando avaliação…</p>;
+  }
+
+  if (step === 'save-failed') {
+    return (
+      <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h1 style={{ fontSize: 'var(--font-size-xl)', color: 'var(--color-danger)' }}>
+          Não foi possível salvar a avaliação
+        </h1>
+        <p style={{ color: 'var(--color-text-muted)' }}>
+          Suas respostas continuam nesta tela — nada foi perdido. Erro: {saveError}
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="primary" onClick={() => runnerResult && persist(runnerResult)}>
+            Tentar salvar de novo
+          </Button>
+          <Button variant="ghost" onClick={onDone}>
+            Sair sem salvar
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (step === 'result' && runnerResult && evaluator && evaluatee && evaluateeRole && evaluationType) {

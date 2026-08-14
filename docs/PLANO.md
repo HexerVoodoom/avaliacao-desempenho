@@ -259,3 +259,45 @@ o app rodando de verdade — não uma auditoria estática):**
   ordem de tab em telas com muitos campos dinâmicos (accordion de
   competências) — fica como item para uma futura rodada de teste manual com
   leitor de tela.
+
+## 10. Revisão da squad de produto (ProdSquad, run `studio-review-01`)
+
+O usuário instalou um kit de 11 personas (`.claude/agents/`, `.claude/skills/prod-squad`,
+`memory/`, `brand/`) e pediu para acionar a squad inteira para analisar e refinar o projeto.
+Relatório completo: `product/studio-review-01/findings.md`. Resumo do que foi corrigido nesta
+rodada (achados corroborados por múltiplas personas independentemente, tratados como prioridade):
+
+- **[Bug de perda silenciosa de dado, achado por 4 personas]** `NewEvaluationWizard` mostrava a
+  tela de resultado antes de a avaliação estar de fato salva. Corrigido: agora só avança para
+  "result" depois que `create`+`update` resolvem; falha mostra uma tela de erro com "tentar salvar
+  de novo" (as respostas continuam em memória, nada se perde).
+- **[Suite de teste automatizado, achado mais grave do investor-skeptic]** Instalado Vitest em
+  `packages/domain` e `packages/local-store`, com testes reais — incluindo um teste de regressão
+  que reproduz a exata classe de bug acima (gravação falha → erro claro, não silêncio). Rodando no
+  CI (`npm run test`). Linguagem do `memory/company.md`/deste documento corrigida para não chamar
+  de "e2e-tested" o que era verificação manual descartada.
+- **["Cancelar avaliação" sem confirmação + palavras-chave sem `aria-label`, achados por
+  design-critic + product-designer]** Corrigidos em `EvaluationRunner.tsx`. Botões de nota 1-5
+  agora usam a semântica de cor do `brand/design-system.md` (sucesso/alerta/perigo) e têm alvo de
+  toque ≥44px — a tela é usada ao vivo, em tablet.
+- **[Exclusão de Membro sem checagem de integridade + exclusão de Cargo não considerava
+  Avaliações, achados por qa-sweeper + staff-backend]** `MembersPage` agora avisa (sem bloquear)
+  quantas avaliações ficam inacessíveis no Histórico; `RolesPage` agora bloqueia excluir um cargo
+  referenciado só por avaliações antigas, não só por membros atuais.
+- **[Falta de tratamento de erro em `create`/`update`/`remove` no client-app, achado por
+  staff-backend + qa-sweeper]** `RoleForm`, `MemberForm` e as duas exclusões agora capturam erro e
+  mostram mensagem — antes viravam unhandled promise rejection muda.
+- **[RLS de `evaluations` permissiva demais, achado do security-architect, severidade Alta]**
+  `0001_init.sql`: antes, qualquer avaliador da organização podia editar/apagar avaliações de
+  colegas. Agora só admins da org podem alterar/excluir depois de criada (criar continua liberado
+  para qualquer membro, igual ao fluxo do app hoje). Restrição completa por autoria exigiria ligar
+  `members` a `auth.users` — gap real, documentado no SQL, não resolvido nesta rodada.
+- **["Cliente de referência" (NOSSA) reposicionado, achado do investor-skeptic]**
+  `memory/company.md` não chama mais NOSSA de cliente validado — é fonte de conteúdo herdada, uso
+  real em produção nunca foi observado.
+
+**Deliberadamente não tratado nesta rodada (é decisão de negócio, não bug técnico — squad
+recomendou tratar separadamente):** validar a riskiest assumption com um comprador real, definir
+preço/ACV, canal de distribuição, instrumentação/analytics, decisão de propriedade da biblioteca
+de competências (seed vs. custom entre organizações — ADR-001 recomendado pelo principal-architect,
+ainda em aberto), draft de avaliação em andamento.

@@ -20,6 +20,8 @@ export function MembersPage({ organization }: MembersPageProps) {
   const [roles, setRoles] = React.useState<Role[]>([]);
   const [editing, setEditing] = React.useState<Member | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Member | null>(null);
+  const [deleteTargetEvalCount, setDeleteTargetEvalCount] = React.useState(0);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const roleById = React.useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
 
@@ -36,15 +38,40 @@ export function MembersPage({ organization }: MembersPageProps) {
     refresh();
   }, [refresh]);
 
+  // A member can be the evaluator or the evaluatee on past Evaluations —
+  // deleting them doesn't corrupt those records (they still exist in
+  // storage), but the member vanishes from every picker, including
+  // HistoryPage's, which makes that history practically unreachable. Warn
+  // before doing it instead of silently orphaning it (ProdSquad finding,
+  // qa-sweeper + staff-backend).
+  async function requestDelete(member: Member) {
+    const evaluations = await store.evaluations.list(organization.id);
+    const count = evaluations.filter(
+      (e) => e.evaluateeMemberId === member.id || e.evaluatorMemberId === member.id
+    ).length;
+    setDeleteTargetEvalCount(count);
+    setDeleteTarget(member);
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
-    await store.members.remove(deleteTarget.id);
-    setDeleteTarget(null);
-    refresh();
+    try {
+      await store.members.remove(deleteTarget.id);
+      setDeleteTarget(null);
+      setDeleteError(null);
+      refresh();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
     <div>
+      {deleteError && (
+        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)', marginBottom: 12 }}>
+          Não foi possível remover: {deleteError}
+        </p>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Membros</h1>
         {!editing && (
@@ -103,7 +130,7 @@ export function MembersPage({ organization }: MembersPageProps) {
                   <Button variant="ghost" size="sm" onClick={() => setEditing(m)}>
                     Editar
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(m)}>
+                  <Button variant="ghost" size="sm" onClick={() => requestDelete(m)}>
                     Remover
                   </Button>
                 </div>
@@ -118,7 +145,11 @@ export function MembersPage({ organization }: MembersPageProps) {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title={`Remover "${deleteTarget?.firstName} ${deleteTarget?.lastName ?? ''}"?`}
-        description="Essa ação não pode ser desfeita. Avaliações já registradas para este membro continuam salvas."
+        description={
+          deleteTargetEvalCount > 0
+            ? `Essa ação não pode ser desfeita. ${deleteTargetEvalCount} avaliação(ões) ligadas a este membro continuam salvas, mas ficam inacessíveis em Histórico (que busca por membro).`
+            : 'Essa ação não pode ser desfeita.'
+        }
         confirmLabel="Remover"
         tone="danger"
         onConfirm={confirmDelete}
@@ -141,6 +172,7 @@ function MemberForm({ organization, roles, initialMember, onCancel, onSaved }: M
   const [birthDate, setBirthDate] = React.useState<PartialDate | undefined>(initialMember?.birthDate);
   const [startDate, setStartDate] = React.useState<PartialDate | undefined>(initialMember?.startDate);
   const [roleId, setRoleId] = React.useState(initialMember?.roleId ?? '');
+  const [error, setError] = React.useState<string | null>(null);
 
   const roleById = React.useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
   const selectedRole = roleId ? roleById.get(roleId) : undefined;
@@ -148,26 +180,35 @@ function MemberForm({ organization, roles, initialMember, onCancel, onSaved }: M
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!firstName.trim() || !roleId) return;
+    setError(null);
 
-    if (initialMember) {
-      await store.members.update(initialMember.id, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim() || undefined,
-        birthDate,
-        startDate,
-        roleId,
-      });
-    } else {
-      await store.members.create({
-        organizationId: organization.id,
-        firstName: firstName.trim(),
-        lastName: lastName.trim() || undefined,
-        birthDate,
-        startDate,
-        roleId,
-      });
+    try {
+      if (initialMember) {
+        await store.members.update(initialMember.id, {
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+          birthDate,
+          startDate,
+          roleId,
+        });
+      } else {
+        await store.members.create({
+          organizationId: organization.id,
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+          birthDate,
+          startDate,
+          roleId,
+        });
+      }
+      onSaved();
+    } catch (err) {
+      // Previously an uncaught rejection — a full localStorage quota, for
+      // instance, would fail this write silently and the form would just
+      // sit there with no explanation (ProdSquad finding, staff-backend +
+      // qa-sweeper).
+      setError(err instanceof Error ? err.message : String(err));
     }
-    onSaved();
   }
 
   return (
@@ -219,6 +260,12 @@ function MemberForm({ organization, roles, initialMember, onCancel, onSaved }: M
           <Badge tone="neutral">{selectedRole.activities.length} atividades</Badge>
           <Badge tone="neutral">{selectedRole.competencyLinks.length} competências</Badge>
         </div>
+      )}
+
+      {error && (
+        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)' }}>
+          Não foi possível salvar: {error}
+        </p>
       )}
 
       <div style={{ display: 'flex', gap: 8 }}>

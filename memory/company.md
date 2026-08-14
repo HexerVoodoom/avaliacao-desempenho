@@ -8,10 +8,14 @@
   for end users: it's a multi-tenant platform (`apps/client-app`) plus an internal onboarding tool
   (`apps/studio-admin`) that provisions a themed, tenant-isolated instance per client (each client
   = an `Organization` row, own design tokens, own cargos/membros/avaliações).
-- **First client (reference deployment):** an architecture firm (NOSSA), whose original
+- **Seed content source (not a validated client):** an architecture firm (NOSSA)'s original
   hand-built prototype (`HexerVoodoom/NOSSA`, no longer receiving commits) supplied the seed
   content — 36 competencies / 127 questions across 6 thematic blocks, 8 default cargos — now
-  reused as the **global competency library** shared across every future client.
+  reused as the **global competency library** shared across every future client. Naming this
+  "the reference client" would overstate it: nobody has observed NOSSA (or anyone) actually
+  running Studio in production. It's a proven *content* source, not evidence of product-market
+  fit — corrected after the ProdSquad review (investor-skeptic finding) flagged the earlier
+  wording as borrowing credibility the project hasn't earned yet.
   Client-specific data (cargos, membros) is per-organization from day one.
 - **Team / stage:** solo builder (the user) + Claude Code as the engineering agent. Pre-revenue,
   pre-second-client. No funding round in progress — this squad run is a rigor exercise, not a
@@ -34,11 +38,20 @@
   only "skin" surface — a client's `design.md` becomes `Organization.designTokens`, applied at
   runtime via `applyDesignTokens()`. Includes a WCAG AA contrast validator
   (`packages/ui/src/lib/contrast.ts`) that gates publishing a new client's theme.
-- **Shipped and e2e-tested (Playwright, not just typecheck/build):** Membros, Cargos (with the
-  competency-accordion assignment UI), Competências (create new, global), all 3 evaluation methods
-  (dialógica / tradicional / atividades) end-to-end through a result screen, Histórico/comparison
-  over time with "combinados" (commitment) tracking, an in-app Manual, and Studio-admin's
-  client-onboarding form (logo, palette with live contrast validation, typography, role taxonomy).
+- **Shipped:** Membros, Cargos (with the competency-accordion assignment UI), Competências
+  (create new, global), all 3 evaluation methods (dialógica / tradicional / atividades) end-to-end
+  through a result screen, Histórico/comparison over time with "combinados" (commitment) tracking,
+  an in-app Manual, and Studio-admin's client-onboarding form (logo, palette with live contrast
+  validation, typography, role taxonomy).
+- **Test coverage — be precise about what this means.** Every flow above was walked manually
+  (mostly via ad-hoc Playwright scripts run once, interactively, and discarded) during
+  development — real verification, but not reproducible; nothing was committed as a repeatable
+  suite. That gap was itself the ProdSquad review's most-cited finding (investor-skeptic +
+  qa-sweeper). What IS committed and reproducible today (`npm run test`, wired into CI): a Vitest
+  suite for the pure logic in `packages/domain` (scoring/scale rules) and `packages/local-store`
+  (CRUD + the exact write-failure class of bug the review's top data-loss finding belonged to).
+  Committing an equivalent Playwright suite for the UI flows is still open — say "verified
+  manually" for those until it exists, not "tested".
 - **Known, explicitly-deferred gaps** (see `docs/PLANO.md` §7 for the full list): editing an
   existing global competency (ownership model between seed vs. client-created content undecided),
   draft/in-progress evaluations (today it's all-or-nothing), Supabase not provisioned.
