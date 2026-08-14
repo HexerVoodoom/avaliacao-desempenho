@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@studio/domain": "*",
+    "@studio/local-store": "*",
     "@studio/supabase": "*",
     "@studio/ui": "*",
     "react": "^18.3.1",

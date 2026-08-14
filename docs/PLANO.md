@@ -164,21 +164,30 @@ Cada fase termina com um **gate de qualidade** (não é uma etapa separada no fi
 
 - [x] **Fase 0 — Fundação:** monorepo (`npm workspaces`), `packages/domain` (tipos + regras de escala), `packages/supabase` (schema SQL completo com RLS multi-tenant + seed da biblioteca global de competências), scaffolds de `apps/client-app` e `apps/studio-admin`.
 - [x] **Fase 1 — Design system base:** `packages/ui` (tokens.css, theme.ts, Button/Badge de referência), `docs/design.md.template`, `docs/criterios-secoes.md`.
-- [~] **Fase 2 — Studio-admin núcleo:** formulário de novo cliente implementando `design.md.template` (marca, paleta com validador de contraste WCAG AA ao vivo — `packages/ui/src/lib/contrast.ts` —, taxonomia de cargos, métodos de avaliação habilitados). **Pendente:** persistência real em Supabase (projeto hospedado pausado — ver nota abaixo), upload de logo/favicon, campos de tipografia/forma/tom de voz do template, import de dados (CSV/JSON).
-- [ ] **Fase 3 — Client-app: Cadastros** (Membros, Cargos, Competências).
+- [~] **Fase 2 — Studio-admin núcleo:** formulário de novo cliente implementando `design.md.template` (marca, paleta com validador de contraste WCAG AA ao vivo — `packages/ui/src/lib/contrast.ts` —, taxonomia de cargos, métodos de avaliação habilitados), agora persistindo de verdade via `@studio/local-store`. **Pendente:** upload de logo/favicon, campos de tipografia/forma/tom de voz do template, import de dados (CSV/JSON).
+- [~] **Fase 3 — Client-app: Cadastros.** Membros (nome/sobrenome, nascimento e início com precisão configurável ano/mês/dia — `PartialDateInput`) e Cargos (filtro por tipo/busca, accordion de competências por bloco temático com seleção de afirmações/base de diálogo, atividades, prévia com contagem) implementados e testados ponta a ponta (Playwright: criar cargo → criar membro → sobrevive a reload). **Pendente:** editar/duplicar cargo existente, tela de Competências (criar nova competência global), bloqueio de exclusão de cargo com membros vinculados está feito, mas sem confirmação de UI mais rica (usa `alert`/`window.confirm` por ora).
 - [ ] **Fase 4 — Client-app: Avaliações** (3 fluxos + resultado).
 - [ ] **Fase 5 — Histórico/Comparação.**
 - [ ] **Fase 6 — Manual + polish do Studio-admin.**
 - [ ] **Fase 7 — QA/Design/Segurança transversal** (roda a cada fase, não só ao final).
 
-**Bloqueio atual:** o projeto Supabase hospedado (US$10/mês, org Voila-Design,
-`sa-east-1`) foi cotado e a criação foi pausada a pedido do usuário — sem
-decisão de custo, `packages/supabase/migrations` não pode ser aplicado e não
-há auth real. Ambiente local (`supabase start` via Docker) também não é
-viável no sandbox de execução atual (sem daemon Docker). Enquanto isso,
-Fase 2+ avança nas partes independentes de backend (validação, formulários,
-regras de negócio em `packages/domain`); telas que exigem dado persistido
-ficam com mock local até a decisão.
+**Decisão de persistência (temporária):** por pedido do usuário, "por enquanto
+deixa salvando local" — implementado `packages/domain/src/repository.ts`
+(interfaces `StudioStore`/`OrganizationRepository`/`RoleRepository`/
+`MemberRepository`/`EvaluationRepository`, todo o app fala só com essas
+interfaces) e `@studio/local-store`, que as implementa sobre `localStorage`
+do navegador. A biblioteca global de competências vive como dado estático em
+`packages/local-store/src/competency-library.data.ts` (mesmo conteúdo do seed
+SQL). Quando o backend for decidido, um `@studio/supabase-store` que
+implemente `StudioStore` substitui `createLocalStore()` sem mudar nenhuma
+tela — ver nota de bloqueio original em versões anteriores deste documento
+(projeto Supabase cotado em US$10/mês, pausado a pedido do usuário).
+
+**Limitação conhecida do modo local:** `client-app` e `studio-admin` rodam em
+portas/origens diferentes em dev, então `localStorage` não é compartilhado
+entre eles — cada um cria sua própria organização "default". Isso é aceitável
+enquanto o modo de persistência é local; deixa de ser um problema assim que
+houver um backend compartilhado.
 
 ## 8. Uso dos plugins engineering/design (a partir da Fase 2)
 
