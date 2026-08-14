@@ -69,7 +69,12 @@ export function EvaluationsPage({ organization }: EvaluationsPageProps) {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <select style={inputStyle} value={filterMember} onChange={(e) => setFilterMember(e.target.value)}>
+        <select
+          style={inputStyle}
+          value={filterMember}
+          onChange={(e) => setFilterMember(e.target.value)}
+          aria-label="Filtrar avaliações por membro"
+        >
           <option value="all">Todos os membros</option>
           {members.map((m) => (
             <option key={m.id} value={m.id}>
@@ -77,7 +82,12 @@ export function EvaluationsPage({ organization }: EvaluationsPageProps) {
             </option>
           ))}
         </select>
-        <select style={inputStyle} value={filterType} onChange={(e) => setFilterType(e.target.value as EvaluationType | 'all')}>
+        <select
+          style={inputStyle}
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value as EvaluationType | 'all')}
+          aria-label="Filtrar avaliações por método"
+        >
           <option value="all">Todos os métodos</option>
           {(['dialogica', 'tradicional', 'atividades'] as EvaluationType[]).map((t) => (
             <option key={t} value={t}>
@@ -85,8 +95,20 @@ export function EvaluationsPage({ organization }: EvaluationsPageProps) {
             </option>
           ))}
         </select>
-        <input type="date" style={inputStyle} value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
-        <input type="date" style={inputStyle} value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
+        <input
+          type="date"
+          style={inputStyle}
+          value={filterFrom}
+          onChange={(e) => setFilterFrom(e.target.value)}
+          aria-label="Data inicial do filtro"
+        />
+        <input
+          type="date"
+          style={inputStyle}
+          value={filterTo}
+          onChange={(e) => setFilterTo(e.target.value)}
+          aria-label="Data final do filtro"
+        />
       </div>
 
       <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>

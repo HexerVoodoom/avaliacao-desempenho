@@ -7,8 +7,9 @@ import { RolesPage } from './pages/RolesPage';
 import { CompetenciesPage } from './pages/CompetenciesPage';
 import { EvaluationsPage } from './pages/EvaluationsPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { ManualPage } from './pages/ManualPage';
 
-type Tab = 'members' | 'roles' | 'competencies' | 'evaluations' | 'history';
+type Tab = 'members' | 'roles' | 'competencies' | 'evaluations' | 'history' | 'manual';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'evaluations', label: 'Avaliações' },
@@ -16,6 +17,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'members', label: 'Membros' },
   { id: 'roles', label: 'Cargos' },
   { id: 'competencies', label: 'Competências' },
+  { id: 'manual', label: 'Manual de uso' },
 ];
 
 export function App() {
@@ -60,6 +62,7 @@ export function App() {
         {tab === 'members' && <MembersPage organization={organization} />}
         {tab === 'roles' && <RolesPage organization={organization} />}
         {tab === 'competencies' && <CompetenciesPage />}
+        {tab === 'manual' && <ManualPage />}
       </main>
     </div>
   );

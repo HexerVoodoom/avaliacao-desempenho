@@ -40,14 +40,24 @@ export function PartialDateInput({ label, value, onChange }: PartialDateInputPro
     emit(year ?? '', month ?? '', day ?? '', newPrecision);
   }
 
+  // The visible <label> text names the whole field ("Data de nascimento"),
+  // but it doesn't wrap either control — every control still needs its own
+  // accessible name (aria-label) or a screen reader announces it as
+  // unlabeled. Caught by an automated axe-core pass (Fase 7 QA gate).
+  const groupId = React.useId();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>{label}</label>
+      <label id={groupId} style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
+        {label}
+      </label>
       <div style={{ display: 'flex', gap: 8 }}>
         <select
           value={precision}
           onChange={(e) => handlePrecisionChange(e.target.value as DatePrecision)}
           style={selectStyle}
+          aria-label={`Precisão de ${label}`}
+          aria-describedby={groupId}
         >
           {PRECISIONS.map((p) => (
             <option key={p.value} value={p.value}>
@@ -61,6 +71,7 @@ export function PartialDateInput({ label, value, onChange }: PartialDateInputPro
             value={value?.value ?? ''}
             onChange={(e) => emit(...(e.target.value.split('-') as [string, string, string]), 'day')}
             style={inputStyle}
+            aria-label={label}
           />
         )}
         {precision === 'month' && (
@@ -72,6 +83,7 @@ export function PartialDateInput({ label, value, onChange }: PartialDateInputPro
               emit(y ?? '', m ?? '', '', 'month');
             }}
             style={inputStyle}
+            aria-label={label}
           />
         )}
         {precision === 'year' && (
@@ -83,6 +95,7 @@ export function PartialDateInput({ label, value, onChange }: PartialDateInputPro
             value={year ?? ''}
             onChange={(e) => emit(e.target.value, '', '', 'year')}
             style={inputStyle}
+            aria-label={label}
           />
         )}
       </div>

@@ -36,8 +36,9 @@ export function App() {
         colorSurfaceMuted: payload.palette.colorSurfaceMuted,
         colorTextPrimary: payload.palette.colorTextPrimary,
         colorTextMuted: payload.palette.colorTextMuted,
-        fontFamily: 'Inter, system-ui, sans-serif',
-        radiusBase: '10px',
+        fontFamily: payload.fontFamily,
+        radiusBase: payload.radiusBase,
+        logoUrlLight: payload.logoUrl,
         density: 'comfortable',
       },
       enabledEvaluationTypes: payload.enabledEvaluationTypes,
@@ -48,7 +49,7 @@ export function App() {
   }
 
   return (
-    <main style={{ padding: 32, maxWidth: 640, margin: '0 auto' }}>
+    <main style={{ padding: 32, maxWidth: creating ? 860 : 640, margin: '0 auto' }}>
       <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Studio Admin</h1>
       <p style={{ color: 'var(--color-text-muted)', marginBottom: 24 }}>
         Dados salvos localmente neste navegador por enquanto (localStorage) — ver docs/PLANO.md §7.
@@ -69,9 +70,15 @@ export function App() {
                   borderRadius: 'var(--radius-base)',
                   display: 'flex',
                   justifyContent: 'space-between',
+                  alignItems: 'center',
                 }}
               >
-                <span>{org.name}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {org.designTokens.logoUrlLight && (
+                    <img src={org.designTokens.logoUrlLight} alt="" style={{ height: 20 }} />
+                  )}
+                  {org.name}
+                </span>
                 <span style={{ color: 'var(--color-text-muted)' }}>/{org.slug}</span>
               </li>
             ))}

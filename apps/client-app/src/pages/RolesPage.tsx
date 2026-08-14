@@ -69,7 +69,12 @@ export function RolesPage({ organization }: RolesPageProps) {
       {!editing && (
         <>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={inputStyle}>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              style={inputStyle}
+              aria-label="Filtrar cargos por tipo"
+            >
               <option value="all">Todos os tipos</option>
               {organization.roleTypes.map((t) => (
                 <option key={t} value={t}>
@@ -80,6 +85,7 @@ export function RolesPage({ organization }: RolesPageProps) {
             <input
               style={{ ...inputStyle, flex: 1 }}
               placeholder="Buscar por nome..."
+              aria-label="Buscar cargos por nome"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />

@@ -164,12 +164,12 @@ Cada fase termina com um **gate de qualidade** (não é uma etapa separada no fi
 
 - [x] **Fase 0 — Fundação:** monorepo (`npm workspaces`), `packages/domain` (tipos + regras de escala), `packages/supabase` (schema SQL completo com RLS multi-tenant + seed da biblioteca global de competências), scaffolds de `apps/client-app` e `apps/studio-admin`.
 - [x] **Fase 1 — Design system base:** `packages/ui` (tokens.css, theme.ts, Button/Badge de referência), `docs/design.md.template`, `docs/criterios-secoes.md`.
-- [~] **Fase 2 — Studio-admin núcleo:** formulário de novo cliente implementando `design.md.template` (marca, paleta com validador de contraste WCAG AA ao vivo — `packages/ui/src/lib/contrast.ts` —, taxonomia de cargos, métodos de avaliação habilitados), agora persistindo de verdade via `@studio/local-store`. **Pendente:** upload de logo/favicon, campos de tipografia/forma/tom de voz do template, import de dados (CSV/JSON).
+- [~] **Fase 2/6 — Studio-admin:** formulário de novo cliente implementando `design.md.template` (marca com upload de logo, paleta com validador de contraste WCAG AA ao vivo — `packages/ui/src/lib/contrast.ts` —, tipografia/raio de borda, taxonomia de cargos, métodos de avaliação habilitados) persistindo via `@studio/local-store`, agora com **painel de prévia ao vivo** (aplica os tokens escolhidos em tempo real sobre Button/Badge/logo antes de publicar). **Pendente:** favicon, tom de voz/microcopy do template, import de dados (CSV/JSON), preview cobrindo mais telas do produto (hoje é só um cartão de exemplo, não as telas reais).
 - [x] **Fase 3 — Client-app: Cadastros.** Membros (nome/sobrenome, nascimento e início com precisão configurável ano/mês/dia — `PartialDateInput`, **editar** membro existente), Cargos (filtro por tipo/busca, accordion de competências por bloco temático com seleção de afirmações/base de diálogo, atividades, prévia com contagem, bloqueio de exclusão com membros vinculados — agora com `ConfirmDialog` do design system em vez de `window.confirm`/`alert`, **editar** cargo existente) e Competências (criar competência nova na biblioteca global — nome, bloco temático, base de diálogo com template de redação, N afirmações técnicas). Testado ponta a ponta com Playwright, incluindo edição e exclusão bloqueada. **Pendente, adiado por decisão de escopo:** editar/duplicar uma competência existente — a biblioteca global mistura conteúdo semeado (compartilhado por todos os clientes, imutável neste modo local) com o que cada cliente cria (`packages/local-store` mantém isso numa coleção separada); editar exige decidir a regra de propriedade (quem pode editar o quê) antes, não só a tela.
 - [x] **Fase 4 — Client-app: Avaliações.** Os 3 fluxos (dialógica, tradicional, atividades) rodam sobre um runner único (`evaluation/EvaluationRunner.tsx` + `buildSections.ts`, que filtra as perguntas selecionadas do cargo por tipo — dialógica só pergunta dialógica, tradicional só afirmações, atividades usa a lista de atividades sem seções). Captura nota 1–5 (rótulos corretos por método — `packages/domain/src/scales.ts`), até 3 palavras-chave nas perguntas dialógicas, observação de seção + "o que posso fazer para melhorar/manter" (threshold configurável). Wizard de seleção (avaliador, avaliado por busca ou filtro de cargo, método) e tela de resultado (nota geral com legenda, desempenho por categoria expansível a nível de pergunta). Lista de avaliações com filtros por membro/método/período. Os 3 métodos testados individualmente ponta a ponta (dialógica com fluxo completo até o histórico; tradicional e atividades confirmados rodando do início ao fim). **Pendente:** avaliação em andamento/rascunho (hoje é tudo-ou-nada — cancelar no meio não salva nada).
 - [x] **Fase 5 — Histórico/Comparação.** `apps/client-app/src/pages/HistoryPage.tsx`: por membro, evolução da média por categoria ao longo das avaliações concluídas (com indicador ↑/↓/→ contra a avaliação anterior) e lista de "combinados" (as ações de melhoria registradas em `EvaluationSectionNote.improvementAction`), cada um comparado contra a média da mesma categoria na avaliação seguinte para decidir `cumprido` / `não cumprido` / `aguardando próxima avaliação`. `evaluation/categorize.ts` re-deriva a categoria de cada resposta salva (a avaliação só grava `targetId`+nota, não a categoria) contra o estado atual da biblioteca — funciona mesmo se a competência mudou de bloco depois. Testado ponta a ponta: 2 avaliações dialógicas seguidas para o mesmo membro, com combinado registrado na primeira, e o histórico mostra o status correto.
-- [ ] **Fase 6 — Manual + polish do Studio-admin.**
-- [ ] **Fase 7 — QA/Design/Segurança transversal** (roda a cada fase, não só ao final).
+- [x] **Fase 6 — Manual + polish do Studio-admin.** `apps/client-app/src/pages/ManualPage.tsx`: guia em linguagem simples de cada seção real do produto (Membros, Cargos, Competências, Avaliações, Histórico), um accordion por seção, com passo a passo e dicas — 1:1 com o que existe hoje, não um roteiro aspiracional. Studio-admin: ver Fase 2 acima (upload de logo, tipografia, raio de borda, prévia ao vivo).
+- [x] **Fase 7 — QA/Design/Segurança transversal.** Ver §9 abaixo para o relatório desta rodada — achado real e corrigido: a paleta padrão do onboarding não passava no próprio validador de contraste (bloqueava "Publicar cliente" sempre, para todo cliente novo, até alguém trocar as cores manualmente).
 
 **Decisão de persistência (temporária):** por pedido do usuário, "por enquanto
 deixa salvando local" — implementado `packages/domain/src/repository.ts`
@@ -199,3 +199,63 @@ genéricos ad-hoc: revisão de código/decisões de arquitetura via
 reservado para o caso de um cliente já ter a marca documentada em um arquivo
 Figma (extração de tokens); não se aplica ao design system base, que é
 código direto, sem mockup prévio.
+
+## 9. Relatório do gate de QA/Design/Segurança (Fase 7)
+
+Feito sobre o estado acumulado das Fases 0–6, antes de commitar. Onde a
+skill `security-review` não conseguiu rodar (dependia de `origin/HEAD`, que
+o clone raso deste sandbox não tinha configurado — corrigido com
+`git remote set-head origin main` + refspec completo, registrado aqui para
+não se repetir), a revisão de segurança foi feita manualmente, com o mesmo
+escopo que se pediria à skill.
+
+**QA técnico (`code-review`, nível alto):** nenhum achado. Conferiu a
+integração ponta a ponta dos campos novos do Studio-admin (logo/fonte/raio)
+até `packages/ui/src/theme.ts`, e que as três cópias da paleta padrão
+(`apps/client-app/src/store.ts`, `apps/studio-admin/.../NewOrganizationForm.tsx`,
+`packages/ui/src/tokens.css`) não haviam divergido.
+
+**Segurança (manual, mesmo escopo pedido à skill):**
+- Nenhum `dangerouslySetInnerHTML`/`innerHTML`/`eval` no código — sem
+  superfície de XSS via renderização de conteúdo do usuário (JSX escapa por
+  padrão).
+- Upload de logo: `data:` URL usada só como `src` de `<img>`, nunca
+  executada; `accept="image/*"` é só uma dica de UI, não uma validação, mas
+  isso não é um risco (um arquivo não-imagem só falha em renderizar).
+- **Achado real, corrigido:** upload de logo sem limite de tamanho e
+  `localStorage.setItem` sem tratamento de erro — uma imagem grande podia
+  estourar a cota do navegador (tipicamente 5-10MB, compartilhada por toda
+  chave que o app grava) e perder a escrita silenciosamente, não só a do
+  logo. Corrigido com um limite de 500KB no upload
+  (`apps/studio-admin/src/NewOrganizationForm.tsx`) e
+  `packages/local-store/src/collection.ts` agora lança um erro claro em vez
+  de falhar em silêncio.
+- Isolamento entre organizações hoje depende só de UUIDs
+  (`crypto.randomUUID()`) e do filtro por `organizationId` nas queries — não
+  há de fato múltiplos usuários/tenants no modo local (um navegador = um
+  usuário), então isso não é uma vulnerabilidade explorável agora. Mas não
+  é RLS: quando o backend Supabase for decidido, a policy de RLS já escrita
+  em `packages/supabase/migrations/0001_init.sql` é o que efetivamente vai
+  isolar organizações — sem ela, o "filtro por organizationId" do
+  `local-store` não seria suficiente sozinho num backend real.
+
+**Acessibilidade/design (`axe-core`, regras WCAG 2A/2AA, automatizado sobre
+o app rodando de verdade — não uma auditoria estática):**
+- **Achado real, corrigido:** 3 componentes com `<select>`/`<input>` sem
+  nome acessível (regra `label`/`select-name`, impacto "critical" no axe) —
+  filtros de `RolesPage` e `EvaluationsPage` (selects/inputs sem `<label>`
+  nem `aria-label`), e o seletor de precisão dentro de `PartialDateInput`
+  (o `<label>` visível nomeia o campo inteiro mas não envolve nenhum dos
+  dois controles reais). Corrigido com `aria-label` em todos — 10
+  telas/estados diferentes auditadas depois da correção (listas, formulários
+  de criação/edição, wizard de avaliação, runner, resultado, histórico,
+  manual, onboarding do Studio-admin): **zero violações WCAG 2A/2AA em
+  todas**.
+- Contraste: coberto pelo validador de `packages/ui/src/lib/contrast.ts`
+  (ver achado da Fase 6 acima) — a própria paleta padrão do onboarding não
+  passava, foi corrigida.
+- Foco de teclado: inputs nativos mantêm o anel de foco padrão do navegador
+  (não suprimido); `Button` tem `--focus-ring` customizado. Não testado:
+  ordem de tab em telas com muitos campos dinâmicos (accordion de
+  competências) — fica como item para uma futura rodada de teste manual com
+  leitor de tela.

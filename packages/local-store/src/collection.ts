@@ -20,7 +20,18 @@ export class Collection<T extends { id: string }> {
 
   private write(items: T[]): void {
     if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(this.storageKey, JSON.stringify(items));
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(items));
+    } catch (err) {
+      // Most commonly QuotaExceededError (the per-origin localStorage quota,
+      // typically 5-10MB, is shared across every key this app writes). Fail
+      // loudly instead of losing the write silently — callers awaiting
+      // create()/update() get a rejected promise rather than a false
+      // "success" with no actual persistence.
+      throw new Error(
+        `Não foi possível salvar em "${this.storageKey}": armazenamento local cheio ou indisponível. ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
   }
 
   async all(): Promise<T[]> {

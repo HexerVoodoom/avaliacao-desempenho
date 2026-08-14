@@ -10,15 +10,17 @@
  */
 
 :root {
-  /* Brand */
+  /* Brand — every value here passes its own WCAG AA text-on-surface check
+     (packages/ui/src/lib/contrast.ts); kept in sync with
+     apps/studio-admin's DEFAULT_PALETTE and apps/client-app's default org. */
   --color-primary: #6155f5;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #34d399;
+  --color-secondary: #0f766e;
   --color-secondary-foreground: #04231a;
 
   /* Semantic */
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
+  --color-success: #15803d;
+  --color-warning: #b45309;
   --color-danger: #ef4444;
 
   /* Surfaces */

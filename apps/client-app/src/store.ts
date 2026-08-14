@@ -37,10 +37,12 @@ async function createDefaultOrganization() {
     slug: DEFAULT_ORG_SLUG,
     name: 'Minha Organização',
     designTokens: {
+      // Kept in sync with apps/studio-admin's DEFAULT_PALETTE — every value
+      // here passes its own WCAG AA check (see packages/ui/src/lib/contrast.ts).
       colorPrimary: '#6155f5',
-      colorSecondary: '#34d399',
-      colorSuccess: '#22c55e',
-      colorWarning: '#f59e0b',
+      colorSecondary: '#0f766e',
+      colorSuccess: '#15803d',
+      colorWarning: '#b45309',
       colorDanger: '#ef4444',
       colorSurface: '#ffffff',
       colorSurfaceMuted: '#f4f4f6',
