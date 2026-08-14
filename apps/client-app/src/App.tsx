@@ -8,6 +8,7 @@ import { CompetenciesPage } from './pages/CompetenciesPage';
 import { EvaluationsPage } from './pages/EvaluationsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ManualPage } from './pages/ManualPage';
+import { FileMenu } from './FileMenu';
 
 type Tab = 'members' | 'roles' | 'competencies' | 'evaluations' | 'history' | 'manual';
 
@@ -45,6 +46,11 @@ export function App() {
         }}
       >
         <div style={{ fontWeight: 600, marginBottom: 16 }}>{organization.name}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+          Arquivo
+        </div>
+        <FileMenu />
+        <div style={{ height: 1, background: 'var(--color-border)', margin: '4px 0 8px' }} />
         {TABS.map((t) => (
           <Button
             key={t.id}

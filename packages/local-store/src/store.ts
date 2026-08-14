@@ -178,3 +178,38 @@ export function createLocalStore(): StudioStore {
     evaluations: new LocalEvaluationRepository(),
   };
 }
+
+export interface StoreSnapshot {
+  version: 1;
+  exportedAt: string;
+  data: Record<string, unknown>;
+}
+
+/** Dumps every localStorage-backed collection (organizations, roles, members,
+ * evaluations, custom competencies) into one JSON-serializable snapshot, for
+ * the Arquivo > Salvar flow — this app has no backend, so a downloaded JSON
+ * file is the only durable save format. */
+export function exportSnapshot(): StoreSnapshot {
+  const data: Record<string, unknown> = {};
+  for (const key of Object.values(KEYS)) {
+    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(key);
+    data[key] = raw ? JSON.parse(raw) : [];
+  }
+  return { version: 1, exportedAt: new Date().toISOString(), data };
+}
+
+/** Replaces every localStorage-backed collection with the contents of a
+ * snapshot produced by exportSnapshot — the Arquivo > Carregar flow. Keys
+ * absent from the snapshot are left untouched rather than cleared, so
+ * partial/older snapshots don't wipe unrelated data. */
+export function importSnapshot(snapshot: StoreSnapshot): void {
+  if (typeof localStorage === 'undefined') return;
+  if (!snapshot || typeof snapshot !== 'object' || !snapshot.data) {
+    throw new Error('Arquivo inválido: não contém dados reconhecíveis do Studio.');
+  }
+  for (const key of Object.values(KEYS)) {
+    if (key in snapshot.data) {
+      localStorage.setItem(key, JSON.stringify(snapshot.data[key]));
+    }
+  }
+}
