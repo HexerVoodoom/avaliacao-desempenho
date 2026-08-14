@@ -14,13 +14,16 @@
   followed through. HR/leadership doing the reviews need a tool that matches their own cargo/
   competency taxonomy without commissioning custom software per client.
 - **Riskiest assumption:** That "theme + tenant isolation" (multi-tenant, not per-client fork) is
-  enough of a "white label" for buyers who were promised a bespoke tool — i.e., that clients won't
-  churn the moment they want customization the current `Organization` model doesn't support
-  (custom fields, custom evaluation flows beyond the 3 built-in methods, deeper branding than
-  colors/logo/type).
-- **Why now:** The first client's original bespoke build (`HexerVoodoom/NOSSA`) proved the content
-  (competency library, evaluation methodology) works in practice, but wasn't reusable — this
-  rebuild exists specifically to turn that one-off into a sellable platform.
+  enough of a "white label" for buyers who were promised a bespoke tool. **Decision (2026-08-14):
+  proceeding with the MVP as designed regardless** — not pre-validating with a hypothetical
+  prospect. The live test is the real one already in motion: Nossa deploying this to its actual
+  client, Luís Tortola Arquitetura. Revisit the assumption if/when a real need for deeper
+  customization surfaces, not before.
+- **Why now:** Nossa (an HR consultancy) commissioned this rebuild to turn its one-off bespoke
+  build for Luís Tortola Arquitetura (`HexerVoodoom/NOSSA`, proved the content/methodology works
+  but wasn't reusable) into a platform Nossa can deploy to Luís Tortola Arquitetura *and* — the
+  actual long-term goal — offer to Nossa's other clients too, with Nossa itself handling
+  onboarding/maintenance per client going forward.
 - **Non-goals (explicitly out of scope today):** per-client code forks; a marketplace of
   third-party evaluation templates; payroll/compensation integration; anything beyond
   performance-review workflows (this is not a full HRIS).

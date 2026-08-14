@@ -301,3 +301,32 @@ recomendou tratar separadamente):** validar a riskiest assumption com um comprad
 preço/ACV, canal de distribuição, instrumentação/analytics, decisão de propriedade da biblioteca
 de competências (seed vs. custom entre organizações — ADR-001 recomendado pelo principal-architect,
 ainda em aberto), draft de avaliação em andamento.
+
+## 11. Decisões de negócio (checkpoint pós-squad, 2026-08-14)
+
+Discutidas diretamente com o usuário após o relatório da squad (`product/studio-review-01/findings.md`).
+Detalhe completo em `memory/company.md` §"Business decisions" — resumo:
+
+1. **Negócio de nicho, não venture-scale.** Confirmado — TAM de ~R$72M/ano não sustenta tese de
+   captação externa, e está tudo bem com isso.
+2. **Riskiest assumption (tema=white-label suficiente) não será pré-validada com prospect
+   hipotético.** Seguimos com o MVP como desenhado; a validação real em andamento é a própria
+   Nossa implantando isso na Luís Tortola Arquitetura.
+3. **Os 3 métodos de avaliação continuam habilitados por padrão para todo cliente.** O primeiro
+   cliente real quer os 3 — não é escopo a cortar, é o produto.
+4. **Studio-admin é operado por humano (a própria Nossa), nunca self-serve.** Não investir em UX
+   "à prova de leigo" ali.
+5. **Ativo de venda com o conteúdo do NOSSA:** boa ideia, adiada até a Luís Tortola Arquitetura
+   estar de fato em uso.
+6. **Persistência local continua até produto validado + clientes captados.** Supabase segue
+   pausado.
+
+**Correção de modelo de negócio (importante):** `memory/company.md` tratava incorretamente "Nossa"
+e a arquitetura como a mesma entidade. Corrigido: **Nossa é uma consultoria de RH** (cliente direto
+do usuário, quem contratou este projeto); **Luís Tortola Arquitetura é cliente da Nossa** (escritório
+de arquitetura focado em filiais — o primeiro tenant real do Studio); o repositório
+`HexerVoodoom/NOSSA` era o protótipo bespoke que a Nossa tinha construído *para* a Luís Tortola
+Arquitetura, fonte do conteúdo semeado (biblioteca de competências). O canal de distribuição real é
+**a própria Nossa oferecendo Studio para os outros clientes dela**, não venda direta a escritórios
+de arquitetura avulsos — isso muda a leitura do achado de GTM do growth-engineer (§9): o
+`studio-admin` é a ferramenta que a Nossa (não o usuário sozinho) vai operar por cliente novo.
