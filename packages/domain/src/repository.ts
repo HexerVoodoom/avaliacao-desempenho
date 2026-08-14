@@ -29,9 +29,21 @@ export interface EvaluationFilters {
   to?: string; // ISO date
 }
 
+export interface NewCompetencyInput {
+  categoryId: string;
+  name: string;
+  description?: string;
+  /** Exactly one dialogic question ("base de diálogo") + N statements ("afirmações técnicas"). */
+  dialogicText: string;
+  statementTexts: string[];
+}
+
 export interface CompetencyLibrary {
   listCategories(): Promise<Category[]>;
   listCompetencies(): Promise<Competency[]>;
+  /** Competencies are global (docs/PLANO.md §2) — adding one here makes it
+   * available to every organization's Cargos accordion immediately. */
+  addCompetency(input: NewCompetencyInput): Promise<Competency>;
 }
 
 export interface OrganizationRepository {

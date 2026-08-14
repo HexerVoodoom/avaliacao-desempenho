@@ -4,17 +4,21 @@ import { Button } from '@studio/ui';
 import { ensureDefaultOrganization } from './store';
 import { MembersPage } from './pages/MembersPage';
 import { RolesPage } from './pages/RolesPage';
+import { CompetenciesPage } from './pages/CompetenciesPage';
+import { EvaluationsPage } from './pages/EvaluationsPage';
 
-type Tab = 'members' | 'roles';
+type Tab = 'members' | 'roles' | 'competencies' | 'evaluations';
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'evaluations', label: 'Avaliações' },
   { id: 'members', label: 'Membros' },
   { id: 'roles', label: 'Cargos' },
+  { id: 'competencies', label: 'Competências' },
 ];
 
 export function App() {
   const [organization, setOrganization] = React.useState<Organization | null>(null);
-  const [tab, setTab] = React.useState<Tab>('members');
+  const [tab, setTab] = React.useState<Tab>('evaluations');
 
   React.useEffect(() => {
     ensureDefaultOrganization().then(setOrganization);
@@ -49,8 +53,10 @@ export function App() {
         ))}
       </nav>
       <main style={{ flex: 1, padding: 32 }}>
+        {tab === 'evaluations' && <EvaluationsPage organization={organization} />}
         {tab === 'members' && <MembersPage organization={organization} />}
         {tab === 'roles' && <RolesPage organization={organization} />}
+        {tab === 'competencies' && <CompetenciesPage />}
       </main>
     </div>
   );

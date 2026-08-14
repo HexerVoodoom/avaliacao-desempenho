@@ -1,10 +1,12 @@
 import type {
+  Competency,
   CompetencyLibrary,
   Evaluation,
   EvaluationFilters,
   EvaluationRepository,
   Member,
   MemberRepository,
+  NewCompetencyInput,
   Organization,
   OrganizationRepository,
   Role,
@@ -20,14 +22,49 @@ const KEYS = {
   roles: 'studio:roles',
   members: 'studio:members',
   evaluations: 'studio:evaluations',
+  customCompetencies: 'studio:custom-competencies',
 } as const;
 
+/** Static (seed) competencies + anything created in-app via addCompetency,
+ * layered together so "global library" behaves the same whether an entry
+ * came from the seed or from a user. */
 class StaticCompetencyLibrary implements CompetencyLibrary {
+  private custom = new Collection<Competency>(KEYS.customCompetencies);
+
   async listCategories() {
     return CATEGORIES;
   }
   async listCompetencies() {
-    return COMPETENCIES;
+    const customOnes = await this.custom.all();
+    return [...COMPETENCIES, ...customOnes];
+  }
+  async addCompetency(input: NewCompetencyInput) {
+    const competencyId = newId();
+    const competency: Competency = {
+      id: competencyId,
+      categoryId: input.categoryId,
+      name: input.name,
+      description: input.description,
+      order: 1000 + Date.now() % 1000, // sorts after the seed library
+      createdAt: new Date().toISOString(),
+      questions: [
+        {
+          id: newId(),
+          competencyId,
+          type: 'dialogic',
+          text: input.dialogicText,
+          order: 0,
+        },
+        ...input.statementTexts.map((text, i) => ({
+          id: newId(),
+          competencyId,
+          type: 'statement' as const,
+          text,
+          order: i + 1,
+        })),
+      ],
+    };
+    return this.custom.insert(competency);
   }
 }
 
