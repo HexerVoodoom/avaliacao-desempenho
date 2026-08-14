@@ -27,9 +27,48 @@ export async function ensureDefaultOrganization() {
   // in-flight promise makes concurrent callers await the same creation
   // instead of racing.
   const existing = await store.organizations.getBySlug(DEFAULT_ORG_SLUG);
-  if (existing) return existing;
+  if (existing) {
+    await ensureSeedData(existing.id);
+    return existing;
+  }
   if (!inFlight) inFlight = createDefaultOrganization();
-  return inFlight;
+  const org = await inFlight;
+  await ensureSeedData(org.id);
+  return org;
+}
+
+let seedInFlight: Promise<void> | null = null;
+
+/** A fresh demo instance otherwise starts with zero roles/members, which
+ * blocks every other screen (Members requires a Role, Evaluations require a
+ * Member) — annoying friction for whitelabel validation testing. Seeds one
+ * "CEO" role + one "UserAlpha" member the first time there are none, and is
+ * a no-op forever after (never overwrites/duplicates once real data exists). */
+async function ensureSeedData(organizationId: string) {
+  if (!seedInFlight) seedInFlight = seedDefaultRoleAndMember(organizationId);
+  return seedInFlight;
+}
+
+async function seedDefaultRoleAndMember(organizationId: string) {
+  const roles = await store.roles.list(organizationId);
+  const ceoRole =
+    roles.find((r) => r.name === 'CEO') ??
+    (await store.roles.create({
+      organizationId,
+      name: 'CEO',
+      type: 'liderança',
+      activities: [],
+      competencyLinks: [],
+    }));
+
+  const members = await store.members.list(organizationId);
+  if (!members.some((m) => m.firstName === 'UserAlpha')) {
+    await store.members.create({
+      organizationId,
+      firstName: 'UserAlpha',
+      roleId: ceoRole.id,
+    });
+  }
 }
 
 async function createDefaultOrganization() {

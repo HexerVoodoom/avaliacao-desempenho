@@ -1,6 +1,22 @@
 import * as React from 'react';
 import type { Category, Competency, Organization, Role, RoleActivity, RoleCompetencyLink } from '@studio/domain';
-import { Button, Badge, Accordion, AccordionItem, AccordionTrigger, AccordionContent, ConfirmDialog } from '@studio/ui';
+import {
+  Button,
+  Badge,
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+  ConfirmDialog,
+  PageHeader,
+  Card,
+  EmptyState,
+  Field,
+  Input,
+  Select,
+  ListRowGroup,
+  ListRow,
+} from '@studio/ui';
 import { store } from '../store';
 
 interface RolesPageProps {
@@ -70,27 +86,30 @@ export function RolesPage({ organization }: RolesPageProps) {
 
   return (
     <div>
+      <PageHeader
+        title="Cargos"
+        actions={
+          !editing && (
+            <Button variant="primary" onClick={() => setEditing('new')}>
+              Novo cargo
+            </Button>
+          )
+        }
+      />
+
       {deleteError && (
-        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)', marginBottom: 12 }}>
+        <p role="alert" className="mb-[var(--space-3)] text-[length:var(--font-size-sm)] text-[var(--color-danger)]">
           Não foi possível remover: {deleteError}
         </p>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Cargos</h1>
-        {!editing && (
-          <Button variant="primary" onClick={() => setEditing('new')}>
-            Novo cargo
-          </Button>
-        )}
-      </div>
 
       {!editing && (
         <>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <select
+          <div className="mb-[var(--space-4)] flex gap-[var(--space-2)]">
+            <Select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              style={inputStyle}
+              className="w-auto"
               aria-label="Filtrar cargos por tipo"
             >
               <option value="all">Todos os tipos</option>
@@ -99,9 +118,9 @@ export function RolesPage({ organization }: RolesPageProps) {
                   {t}
                 </option>
               ))}
-            </select>
-            <input
-              style={{ ...inputStyle, flex: 1 }}
+            </Select>
+            <Input
+              className="flex-1"
               placeholder="Buscar por nome..."
               aria-label="Buscar cargos por nome"
               value={search}
@@ -109,41 +128,42 @@ export function RolesPage({ organization }: RolesPageProps) {
             />
           </div>
 
-          <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {filteredRoles.map((r) => (
-              <li
-                key={r.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: 12,
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-base)',
-                }}
-              >
-                <div>
-                  <strong>{r.name}</strong>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <Badge tone="primary">{r.type}</Badge>
-                    <Badge tone="neutral">{r.activities.length} atividades</Badge>
-                    <Badge tone="neutral">
-                      {r.competencyLinks.reduce((sum, l) => sum + l.selectedQuestionIds.length, 0)} indicadores
-                    </Badge>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>
-                    Editar
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => requestDelete(r)}>
-                    Remover
-                  </Button>
-                </div>
-              </li>
-            ))}
-            {filteredRoles.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}>Nenhum cargo encontrado.</li>}
-          </ul>
+          {filteredRoles.length === 0 ? (
+            <EmptyState
+              title="Nenhum cargo encontrado"
+              description={roles.length === 0 ? 'Crie o primeiro cargo da organização.' : 'Ajuste os filtros de busca.'}
+            />
+          ) : (
+            <Card padded={false}>
+              <ListRowGroup>
+                {filteredRoles.map((r) => (
+                  <ListRow
+                    key={r.id}
+                    title={r.name}
+                    meta={
+                      <span className="flex flex-wrap items-center gap-[var(--space-2)]">
+                        <Badge tone="primary">{r.type}</Badge>
+                        <Badge tone="neutral">{r.activities.length} atividades</Badge>
+                        <Badge tone="neutral">
+                          {r.competencyLinks.reduce((sum, l) => sum + l.selectedQuestionIds.length, 0)} indicadores
+                        </Badge>
+                      </span>
+                    }
+                    actions={
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>
+                          Editar
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => requestDelete(r)}>
+                          Remover
+                        </Button>
+                      </>
+                    }
+                  />
+                ))}
+              </ListRowGroup>
+            </Card>
+          )}
         </>
       )}
 
@@ -286,29 +306,29 @@ function RoleForm({ organization, categories, competencies, initialRole, onCance
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 640 }}>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <label style={fieldLabelStyle}>
-          Nome do cargo
-          <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
-        <label style={fieldLabelStyle}>
-          Tipo de atuação
-          <select style={inputStyle} value={type} onChange={(e) => setType(e.target.value)}>
+    <form onSubmit={handleSubmit} className="flex max-w-[640px] flex-col gap-[var(--space-6)]">
+      <div className="flex gap-[var(--space-3)]">
+        <Field label="Nome do cargo">
+          <Input value={name} onChange={(e) => setName(e.target.value)} required />
+        </Field>
+        <Field label="Tipo de atuação">
+          <Select value={type} onChange={(e) => setType(e.target.value)}>
             {organization.roleTypes.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
       </div>
 
       <section>
-        <h3 style={{ fontSize: 'var(--font-size-base)', marginBottom: 8 }}>Atividades específicas</h3>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <input
-            style={{ ...inputStyle, flex: 1 }}
+        <h3 className="mb-[var(--space-2)] text-[length:var(--font-size-base)] font-[var(--font-weight-semibold)]">
+          Atividades específicas
+        </h3>
+        <div className="mb-[var(--space-2)] flex gap-[var(--space-2)]">
+          <Input
+            className="flex-1"
             value={newActivity}
             onChange={(e) => setNewActivity(e.target.value)}
             placeholder="Descreva uma atividade..."
@@ -323,40 +343,49 @@ function RoleForm({ organization, categories, competencies, initialRole, onCance
             Adicionar
           </Button>
         </div>
-        <ol style={{ paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {activities.map((a, i) => (
-            <li key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 'var(--font-size-sm)' }}>{a}</span>
-              <button type="button" onClick={() => removeActivity(i)} style={{ color: 'var(--color-danger)', border: 'none', background: 'none', cursor: 'pointer' }}>
-                remover
-              </button>
-            </li>
-          ))}
-        </ol>
+        {activities.length > 0 && (
+          <ol className="flex flex-col gap-[var(--space-1)] pl-[var(--space-6)]">
+            {activities.map((a, i) => (
+              <li key={i} className="flex justify-between gap-[var(--space-2)]">
+                <span className="text-[length:var(--font-size-sm)]">{a}</span>
+                <button
+                  type="button"
+                  onClick={() => removeActivity(i)}
+                  className="border-none bg-none cursor-pointer text-[length:var(--font-size-sm)] text-[var(--color-danger)]"
+                >
+                  remover
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
 
       <section>
-        <h3 style={{ fontSize: 'var(--font-size-base)', marginBottom: 8 }}>Biblioteca de competências</h3>
-        <Accordion type="multiple" style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-base)', padding: '0 12px' }}>
+        <h3 className="mb-[var(--space-2)] text-[length:var(--font-size-base)] font-[var(--font-weight-semibold)]">
+          Biblioteca de competências
+        </h3>
+        <Accordion type="multiple" className="rounded-[var(--radius-lg)] border border-[var(--color-border)] px-[var(--space-3)]">
           {categories.map((cat) => (
             <AccordionItem key={cat.id} value={cat.id}>
               <AccordionTrigger>
                 {cat.name}
-                <Badge tone="primary" style={{ marginLeft: 8 }}>
+                <Badge tone="primary" className="ml-[var(--space-2)]">
                   {selectedCountFor(cat.id)} selecionadas
                 </Badge>
               </AccordionTrigger>
               <AccordionContent>
                 {(competenciesByCategory.get(cat.id) ?? []).map((comp) => (
-                  <div key={comp.id} style={{ marginBottom: 12 }}>
-                    <strong style={{ fontSize: 'var(--font-size-sm)' }}>{comp.name}</strong>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4, paddingLeft: 8 }}>
+                  <div key={comp.id} className="mb-[var(--space-3)]">
+                    <strong className="text-[length:var(--font-size-sm)]">{comp.name}</strong>
+                    <div className="mt-[var(--space-1)] flex flex-col gap-[var(--space-1)] pl-[var(--space-2)]">
                       {comp.questions.map((q) => (
-                        <label key={q.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--font-size-sm)' }}>
+                        <label key={q.id} className="flex items-start gap-[var(--space-2)] text-[length:var(--font-size-sm)]">
                           <input
                             type="checkbox"
                             checked={links.get(comp.id)?.has(q.id) ?? false}
                             onChange={() => toggleQuestion(comp.id, q.id)}
+                            className="mt-1"
                           />
                           <span>
                             {q.type === 'dialogic' ? <Badge tone="warning">base de diálogo</Badge> : <Badge tone="neutral">afirmação</Badge>}{' '}
@@ -374,12 +403,12 @@ function RoleForm({ organization, categories, competencies, initialRole, onCance
       </section>
 
       {error && (
-        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)' }}>
+        <p role="alert" className="text-[length:var(--font-size-sm)] text-[var(--color-danger)]">
           Não foi possível salvar: {error}
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="flex gap-[var(--space-2)]">
         <Button type="submit" variant="primary">
           {initialRole ? 'Salvar alterações' : 'Salvar cargo'}
         </Button>
@@ -390,19 +419,3 @@ function RoleForm({ organization, categories, competencies, initialRole, onCance
     </form>
   );
 }
-
-const fieldLabelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  fontSize: 'var(--font-size-sm)',
-  color: 'var(--color-text-muted)',
-  flex: 1,
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--color-border)',
-  fontSize: 'var(--font-size-sm)',
-};

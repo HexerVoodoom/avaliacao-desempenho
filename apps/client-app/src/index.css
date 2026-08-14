@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Tailwind's automatic content detection only walks apps/client-app — it
+   never sees classes used inside the shared @studio/ui component library
+   (a sibling workspace package), so every Button/Card/etc. class that
+   isn't coincidentally also typed somewhere in this app was silently
+   never compiled (e.g. Button's `bg-[var(--color-primary)]` renders with
+   no background at all). Point it at the package's source explicitly. */
+@source "../../../packages/ui/src";
+
 body {
   margin: 0;
   background: var(--color-surface);

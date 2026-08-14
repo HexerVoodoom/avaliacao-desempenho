@@ -23,48 +23,77 @@ const KEYS = {
   members: 'studio:members',
   evaluations: 'studio:evaluations',
   customCompetencies: 'studio:custom-competencies',
+  competencyOverrides: 'studio:competency-overrides',
 } as const;
+
+function competencyFromInput(competencyId: string, input: NewCompetencyInput, createdAt: string, order: number): Competency {
+  return {
+    id: competencyId,
+    categoryId: input.categoryId,
+    name: input.name,
+    description: input.description,
+    order,
+    createdAt,
+    questions: [
+      {
+        id: newId(),
+        competencyId,
+        type: 'dialogic',
+        text: input.dialogicText,
+        order: 0,
+      },
+      ...input.statementTexts.map((text, i) => ({
+        id: newId(),
+        competencyId,
+        type: 'statement' as const,
+        text,
+        order: i + 1,
+      })),
+    ],
+  };
+}
 
 /** Static (seed) competencies + anything created in-app via addCompetency,
  * layered together so "global library" behaves the same whether an entry
- * came from the seed or from a user. */
+ * came from the seed or from a user. Seed entries are read-only source code
+ * (packages/local-store/src/competency-library.data.ts), so an edit to one
+ * of them can't be written back there — instead it's recorded as a full
+ * replacement Competency in `overrides`, keyed by the seed id, and
+ * listCompetencies() swaps it in transparently. */
 class StaticCompetencyLibrary implements CompetencyLibrary {
   private custom = new Collection<Competency>(KEYS.customCompetencies);
+  private overrides = new Collection<Competency>(KEYS.competencyOverrides);
 
   async listCategories() {
     return CATEGORIES;
   }
   async listCompetencies() {
-    const customOnes = await this.custom.all();
-    return [...COMPETENCIES, ...customOnes];
+    const [customOnes, overridden] = await Promise.all([this.custom.all(), this.overrides.all()]);
+    const overrideById = new Map(overridden.map((c) => [c.id, c]));
+    const seedLayer = COMPETENCIES.map((c) => overrideById.get(c.id) ?? c);
+    return [...seedLayer, ...customOnes];
   }
   async addCompetency(input: NewCompetencyInput) {
     const competencyId = newId();
-    const competency: Competency = {
-      id: competencyId,
-      categoryId: input.categoryId,
-      name: input.name,
-      description: input.description,
-      order: 1000 + Date.now() % 1000, // sorts after the seed library
-      createdAt: new Date().toISOString(),
-      questions: [
-        {
-          id: newId(),
-          competencyId,
-          type: 'dialogic',
-          text: input.dialogicText,
-          order: 0,
-        },
-        ...input.statementTexts.map((text, i) => ({
-          id: newId(),
-          competencyId,
-          type: 'statement' as const,
-          text,
-          order: i + 1,
-        })),
-      ],
-    };
+    const competency = competencyFromInput(
+      competencyId,
+      input,
+      new Date().toISOString(),
+      1000 + (Date.now() % 1000) // sorts after the seed library
+    );
     return this.custom.insert(competency);
+  }
+  async updateCompetency(id: string, input: NewCompetencyInput) {
+    const existingCustom = await this.custom.byId(id);
+    if (existingCustom) {
+      return this.custom.patch(id, competencyFromInput(id, input, existingCustom.createdAt, existingCustom.order));
+    }
+    const seed = COMPETENCIES.find((c) => c.id === id);
+    const base = seed ?? (await this.overrides.byId(id));
+    if (!base) throw new Error(`Competência ${id} não encontrada.`);
+    const replacement = competencyFromInput(id, input, base.createdAt, base.order);
+    const existingOverride = await this.overrides.byId(id);
+    return existingOverride ? this.overrides.patch(id, replacement) : this.overrides.insert(replacement);
   }
 }
 
@@ -177,4 +206,39 @@ export function createLocalStore(): StudioStore {
     members: new LocalMemberRepository(),
     evaluations: new LocalEvaluationRepository(),
   };
+}
+
+export interface StoreSnapshot {
+  version: 1;
+  exportedAt: string;
+  data: Record<string, unknown>;
+}
+
+/** Dumps every localStorage-backed collection (organizations, roles, members,
+ * evaluations, custom competencies) into one JSON-serializable snapshot, for
+ * the Arquivo > Salvar flow — this app has no backend, so a downloaded JSON
+ * file is the only durable save format. */
+export function exportSnapshot(): StoreSnapshot {
+  const data: Record<string, unknown> = {};
+  for (const key of Object.values(KEYS)) {
+    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(key);
+    data[key] = raw ? JSON.parse(raw) : [];
+  }
+  return { version: 1, exportedAt: new Date().toISOString(), data };
+}
+
+/** Replaces every localStorage-backed collection with the contents of a
+ * snapshot produced by exportSnapshot — the Arquivo > Carregar flow. Keys
+ * absent from the snapshot are left untouched rather than cleared, so
+ * partial/older snapshots don't wipe unrelated data. */
+export function importSnapshot(snapshot: StoreSnapshot): void {
+  if (typeof localStorage === 'undefined') return;
+  if (!snapshot || typeof snapshot !== 'object' || !snapshot.data) {
+    throw new Error('Arquivo inválido: não contém dados reconhecíveis do Studio.');
+  }
+  for (const key of Object.values(KEYS)) {
+    if (key in snapshot.data) {
+      localStorage.setItem(key, JSON.stringify(snapshot.data[key]));
+    }
+  }
 }

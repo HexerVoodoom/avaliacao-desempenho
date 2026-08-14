@@ -44,6 +44,9 @@ export interface CompetencyLibrary {
   /** Competencies are global (docs/PLANO.md §2) — adding one here makes it
    * available to every organization's Cargos accordion immediately. */
   addCompetency(input: NewCompetencyInput): Promise<Competency>;
+  /** Edits a competency's name/category/dialogic question/statements —
+   * including ones from the seed library, not just user-created ones. */
+  updateCompetency(id: string, input: NewCompetencyInput): Promise<Competency>;
 }
 
 export interface OrganizationRepository {

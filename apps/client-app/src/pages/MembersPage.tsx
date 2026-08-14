@@ -1,6 +1,19 @@
 import * as React from 'react';
 import type { Member, Organization, PartialDate, Role } from '@studio/domain';
-import { Button, Badge, PartialDateInput, ConfirmDialog } from '@studio/ui';
+import {
+  Button,
+  Badge,
+  PartialDateInput,
+  ConfirmDialog,
+  PageHeader,
+  Card,
+  EmptyState,
+  Field,
+  Input,
+  Select,
+  ListRowGroup,
+  ListRow,
+} from '@studio/ui';
 import { store } from '../store';
 
 function formatPartialDate(d?: PartialDate): string {
@@ -67,24 +80,28 @@ export function MembersPage({ organization }: MembersPageProps) {
 
   return (
     <div>
+      <PageHeader
+        title="Membros"
+        actions={
+          !editing && (
+            <Button variant="primary" onClick={() => setEditing('new')} disabled={roles.length === 0}>
+              Novo membro
+            </Button>
+          )
+        }
+      />
+
       {deleteError && (
-        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)', marginBottom: 12 }}>
+        <p role="alert" className="mb-[var(--space-3)] text-[length:var(--font-size-sm)] text-[var(--color-danger)]">
           Não foi possível remover: {deleteError}
         </p>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Membros</h1>
-        {!editing && (
-          <Button variant="primary" onClick={() => setEditing('new')} disabled={roles.length === 0}>
-            Novo membro
-          </Button>
-        )}
-      </div>
 
-      {roles.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Crie ao menos um cargo antes de cadastrar membros — cada membro precisa de um cargo.
-        </p>
+      {roles.length === 0 && !editing && (
+        <EmptyState
+          title="Nenhum cargo cadastrado ainda"
+          description="Crie ao menos um cargo antes de cadastrar membros — cada membro precisa de um cargo."
+        />
       )}
 
       {editing && (
@@ -100,45 +117,43 @@ export function MembersPage({ organization }: MembersPageProps) {
         />
       )}
 
-      {!editing && (
-        <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {members.map((m) => {
-            const role = roleById.get(m.roleId);
-            return (
-              <li
-                key={m.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: 12,
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-base)',
-                }}
-              >
-                <div>
-                  <strong>
-                    {m.firstName} {m.lastName}
-                  </strong>
-                  <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                    {role?.name ?? 'Cargo removido'} · nasc. {formatPartialDate(m.birthDate)} · início{' '}
-                    {formatPartialDate(m.startDate)}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  {role && <Badge tone="primary">{role.type}</Badge>}
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(m)}>
-                    Editar
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => requestDelete(m)}>
-                    Remover
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-          {members.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}>Nenhum membro cadastrado ainda.</li>}
-        </ul>
+      {!editing && roles.length > 0 && (
+        <>
+          {members.length === 0 ? (
+            <EmptyState title="Nenhum membro cadastrado ainda" description="Cadastre o primeiro membro do time." />
+          ) : (
+            <Card padded={false}>
+              <ListRowGroup>
+                {members.map((m) => {
+                  const role = roleById.get(m.roleId);
+                  return (
+                    <ListRow
+                      key={m.id}
+                      title={`${m.firstName} ${m.lastName ?? ''}`.trim()}
+                      meta={
+                        <>
+                          {role?.name ?? 'Cargo removido'} · nasc. {formatPartialDate(m.birthDate)} · início{' '}
+                          {formatPartialDate(m.startDate)}
+                        </>
+                      }
+                      actions={
+                        <>
+                          {role && <Badge tone="primary">{role.type}</Badge>}
+                          <Button variant="ghost" size="sm" onClick={() => setEditing(m)}>
+                            Editar
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => requestDelete(m)}>
+                            Remover
+                          </Button>
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </ListRowGroup>
+            </Card>
+          )}
+        </>
       )}
 
       <ConfirmDialog
@@ -212,36 +227,21 @@ function MemberForm({ organization, roles, initialMember, onCancel, onSaved }: M
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        padding: 16,
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-base)',
-        marginBottom: 16,
-        maxWidth: 480,
-      }}
-    >
-      <div style={{ display: 'flex', gap: 12 }}>
-        <label style={fieldLabelStyle}>
-          Nome
-          <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-        </label>
-        <label style={fieldLabelStyle}>
-          Sobrenome
-          <input style={inputStyle} value={lastName} onChange={(e) => setLastName(e.target.value)} />
-        </label>
+    <Card as="form" onSubmit={handleSubmit} className="mb-[var(--space-6)] flex max-w-[480px] flex-col gap-[var(--space-4)]">
+      <div className="flex gap-[var(--space-3)]">
+        <Field label="Nome">
+          <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+        </Field>
+        <Field label="Sobrenome">
+          <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </Field>
       </div>
 
       <PartialDateInput label="Data de nascimento" value={birthDate} onChange={setBirthDate} />
       <PartialDateInput label="Início na empresa" value={startDate} onChange={setStartDate} />
 
-      <label style={fieldLabelStyle}>
-        Cargo e atuação
-        <select style={inputStyle} value={roleId} onChange={(e) => setRoleId(e.target.value)} required>
+      <Field label="Cargo e atuação">
+        <Select value={roleId} onChange={(e) => setRoleId(e.target.value)} required>
           <option value="" disabled>
             Selecione um cargo
           </option>
@@ -250,12 +250,12 @@ function MemberForm({ organization, roles, initialMember, onCancel, onSaved }: M
               {r.name} ({r.type})
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
       {selectedRole && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>Prévia:</span>
+        <div className="flex items-center gap-[var(--space-2)]">
+          <span className="text-[length:var(--font-size-sm)] text-[var(--color-text-muted)]">Prévia:</span>
           <Badge tone="primary">{selectedRole.type}</Badge>
           <Badge tone="neutral">{selectedRole.activities.length} atividades</Badge>
           <Badge tone="neutral">{selectedRole.competencyLinks.length} competências</Badge>
@@ -263,12 +263,12 @@ function MemberForm({ organization, roles, initialMember, onCancel, onSaved }: M
       )}
 
       {error && (
-        <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)' }}>
+        <p role="alert" className="text-[length:var(--font-size-sm)] text-[var(--color-danger)]">
           Não foi possível salvar: {error}
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="flex gap-[var(--space-2)]">
         <Button type="submit" variant="primary">
           {initialMember ? 'Salvar alterações' : 'Salvar membro'}
         </Button>
@@ -276,22 +276,6 @@ function MemberForm({ organization, roles, initialMember, onCancel, onSaved }: M
           Cancelar
         </Button>
       </div>
-    </form>
+    </Card>
   );
 }
-
-const fieldLabelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  fontSize: 'var(--font-size-sm)',
-  color: 'var(--color-text-muted)',
-  flex: 1,
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--color-border)',
-  fontSize: 'var(--font-size-sm)',
-};

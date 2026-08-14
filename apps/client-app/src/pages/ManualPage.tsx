@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Badge } from '@studio/ui';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Badge, PageHeader, Card } from '@studio/ui';
 
 interface ManualSection {
   id: string;
@@ -78,37 +78,36 @@ const SECTIONS: ManualSection[] = [
 
 export function ManualPage() {
   return (
-    <div style={{ maxWidth: 720 }}>
-      <h1 style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 8 }}>Manual de uso</h1>
-      <p style={{ color: 'var(--color-text-muted)', marginBottom: 24 }}>
-        Um guia rápido de cada seção da ferramenta. Clique em uma seção para expandir.
-      </p>
+    <div className="max-w-[720px]">
+      <PageHeader title="Manual de uso" description="Um guia rápido de cada seção da ferramenta. Clique em uma seção para expandir." />
 
-      <Accordion type="multiple" style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-base)', padding: '0 16px' }}>
-        {SECTIONS.map((section) => (
-          <AccordionItem key={section.id} value={section.id}>
-            <AccordionTrigger>{section.title}</AccordionTrigger>
-            <AccordionContent>
-              <p style={{ color: 'var(--color-text-muted)', marginBottom: 12 }}>{section.summary}</p>
-              <ol style={{ paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {section.steps.map((step, i) => (
-                  <li key={i}>{step}</li>
-                ))}
-              </ol>
-              {section.tips && section.tips.length > 0 && (
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {section.tips.map((tip, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                      <Badge tone="primary">dica</Badge>
-                      <span style={{ fontSize: 'var(--font-size-sm)' }}>{tip}</span>
-                    </div>
+      <Card padded={false} className="px-[var(--space-4)]">
+        <Accordion type="multiple">
+          {SECTIONS.map((section) => (
+            <AccordionItem key={section.id} value={section.id}>
+              <AccordionTrigger>{section.title}</AccordionTrigger>
+              <AccordionContent>
+                <p className="mb-[var(--space-3)] text-[length:var(--font-size-sm)] text-[var(--color-text-muted)]">{section.summary}</p>
+                <ol className="flex flex-col gap-[var(--space-1)] pl-[var(--space-6)]">
+                  {section.steps.map((step, i) => (
+                    <li key={i}>{step}</li>
                   ))}
-                </div>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
+                </ol>
+                {section.tips && section.tips.length > 0 && (
+                  <div className="mt-[var(--space-3)] flex flex-col gap-[var(--space-1)]">
+                    {section.tips.map((tip, i) => (
+                      <div key={i} className="flex items-start gap-[var(--space-2)]">
+                        <Badge tone="primary">dica</Badge>
+                        <span className="text-[length:var(--font-size-sm)]">{tip}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </Card>
     </div>
   );
 }
