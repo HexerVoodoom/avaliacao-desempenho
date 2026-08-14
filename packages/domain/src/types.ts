@@ -27,6 +27,16 @@ export interface DesignTokens {
   logoUrlDark?: string;
   faviconUrl?: string;
   density: 'compact' | 'comfortable';
+  /** Full-bleed background image for the client-app home screen (hero). */
+  backgroundImageUrl?: string;
+  /** Secondary/partner logo shown in the footer (e.g. the platform owner's brand). */
+  footerLogoUrl?: string;
+  /** Small icon variant of footerLogoUrl, shown alongside footerText. */
+  footerIconUrl?: string;
+  /** Footer line 1, e.g. "Ferramenta de Avaliação de Desempenho". */
+  footerText?: string;
+  /** Footer line 2, e.g. "desenvolvido por NOSSA Pessoas & Empresas". */
+  footerSubtext?: string;
 }
 
 export interface Organization {

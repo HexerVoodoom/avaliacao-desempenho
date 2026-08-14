@@ -2,6 +2,7 @@ import * as React from 'react';
 import type { Organization } from '@studio/domain';
 import { Button } from '@studio/ui';
 import { ensureDefaultOrganization } from './store';
+import { HomePage } from './pages/HomePage';
 import { MembersPage } from './pages/MembersPage';
 import { RolesPage } from './pages/RolesPage';
 import { CompetenciesPage } from './pages/CompetenciesPage';
@@ -9,7 +10,7 @@ import { EvaluationsPage } from './pages/EvaluationsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ManualPage } from './pages/ManualPage';
 
-type Tab = 'members' | 'roles' | 'competencies' | 'evaluations' | 'history' | 'manual';
+type Tab = 'home' | 'members' | 'roles' | 'competencies' | 'evaluations' | 'history' | 'manual';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'evaluations', label: 'Avaliações' },
@@ -22,7 +23,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function App() {
   const [organization, setOrganization] = React.useState<Organization | null>(null);
-  const [tab, setTab] = React.useState<Tab>('evaluations');
+  const [tab, setTab] = React.useState<Tab>('home');
 
   React.useEffect(() => {
     ensureDefaultOrganization().then(setOrganization);
@@ -30,6 +31,21 @@ export function App() {
 
   if (!organization) {
     return <main style={{ padding: 32 }}>Carregando…</main>;
+  }
+
+  if (tab === 'home') {
+    return (
+      <HomePage
+        organization={organization}
+        onNavigate={(target) => {
+          if (target === 'newEvaluation' || target === 'savedEvaluations') {
+            setTab(target === 'newEvaluation' ? 'evaluations' : 'history');
+          } else {
+            setTab(target);
+          }
+        }}
+      />
+    );
   }
 
   return (
@@ -45,6 +61,9 @@ export function App() {
         }}
       >
         <div style={{ fontWeight: 600, marginBottom: 16 }}>{organization.name}</div>
+        <Button variant="ghost" onClick={() => setTab('home')} style={{ justifyContent: 'flex-start' }}>
+          ← Início
+        </Button>
         {TABS.map((t) => (
           <Button
             key={t.id}
