@@ -1,0 +1,82 @@
+# `design.md` — Identidade Visual do Cliente
+
+> Preencha este arquivo por cliente (uma cópia em `clients/<slug>/design.md`, ou via
+> formulário equivalente no Studio-admin). Ele só define **tokens** — nunca
+> altera a estrutura, o espaçamento relativo ou o comportamento dos
+> componentes, que vêm de `packages/ui` e já seguem WCAG AA. Isso garante que
+> qualquer identidade aplicada continua acessível e consistente.
+
+## 1. Marca
+
+| Campo | Valor | Observação |
+|---|---|---|
+| Nome do cliente | | Nome exibido no app e em e-mails |
+| Slug | | usado na URL/subdomínio, ex.: `nossa` → `nossa.studio.app` |
+| Logo (claro) | (upload) | fundo transparente, SVG ou PNG ≥512px |
+| Logo (escuro) | (upload) | versão para tema escuro, se houver |
+| Favicon | (upload) | 512×512, será redimensionado |
+
+## 2. Paleta
+
+| Token | Cor (hex) | Contraste mínimo exigido |
+|---|---|---|
+| `colorPrimary` | | ≥ 4.5:1 sobre `colorSurface` e sobre branco |
+| `colorSecondary` | | ≥ 4.5:1 sobre `colorSurface` |
+| `colorSuccess` | | uso: confirmações, notas altas |
+| `colorWarning` | | uso: alertas, notas médias |
+| `colorDanger` | | uso: erros, exclusões, notas baixas |
+| `colorSurface` | | fundo principal |
+| `colorSurfaceMuted` | | fundo secundário (cards, inputs) |
+| `colorTextPrimary` | | ≥ 4.5:1 sobre `colorSurface` |
+| `colorTextMuted` | | ≥ 3:1 sobre `colorSurface` |
+
+> Todo par cor/fundo acima passa pelo validador de contraste automático antes
+> de o tema ser publicado (ver `packages/ui` — script de validação WCAG AA).
+> Um par que reprova bloqueia a publicação do tema até ser corrigido.
+
+## 3. Tipografia
+
+| Campo | Valor |
+|---|---|
+| Fonte principal | (nome + link Google Fonts / arquivo) |
+| Peso padrão | |
+| Peso títulos | |
+
+## 4. Forma
+
+| Campo | Valor |
+|---|---|
+| Raio de borda (`radiusBase`) | ex.: `8px` (mais reto) a `20px` (mais arredondado) |
+| Densidade | `compact` ou `comfortable` |
+
+## 5. Tom de voz / microcopy
+
+| Termo genérico | Como este cliente chama |
+|---|---|
+| "associado" | ex.: colaborador, funcionário, membro |
+| "avaliação" | ex.: avaliação de desempenho, feedback |
+| "líder" | ex.: gestor, coordenador |
+
+## 6. Taxonomia de cargos (tags)
+
+Liste os tipos de cargo deste cliente (vira `Organization.roleTypes`):
+
+- [ ] liderança
+- [ ] associado
+- [ ] terceirizado
+- [ ] outro: ___
+
+## 7. Métodos de avaliação habilitados
+
+- [ ] Dialógica
+- [ ] Tradicional (Likert)
+- [ ] Por atividades
+
+## 8. Checklist de aceite antes de publicar
+
+- [ ] Todos os pares de cor/fundo passaram no validador de contraste (AA)
+- [ ] Logo claro e escuro carregados e testados nos dois temas
+- [ ] Favicon aplicado
+- [ ] Pelo menos 1 tela de cada seção (Membros, Cargos, Competências,
+      Avaliação) revisada com a skin aplicada
+- [ ] Microcopy revisada com o cliente
