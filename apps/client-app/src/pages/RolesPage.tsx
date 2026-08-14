@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { Category, Competency, Organization, Role, RoleActivity, RoleCompetencyLink } from '@studio/domain';
-import { Button, Badge, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@studio/ui';
+import { Button, Badge, Accordion, AccordionItem, AccordionTrigger, AccordionContent, ConfirmDialog } from '@studio/ui';
 import { store } from '../store';
 
 interface RolesPageProps {
@@ -11,7 +11,9 @@ export function RolesPage({ organization }: RolesPageProps) {
   const [roles, setRoles] = React.useState<Role[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [competencies, setCompetencies] = React.useState<Competency[]>([]);
-  const [creating, setCreating] = React.useState(false);
+  const [editing, setEditing] = React.useState<Role | 'new' | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<Role | null>(null);
+  const [blockedDeleteRole, setBlockedDeleteRole] = React.useState<Role | null>(null);
 
   const [filterType, setFilterType] = React.useState<string>('all');
   const [search, setSearch] = React.useState('');
@@ -37,13 +39,19 @@ export function RolesPage({ organization }: RolesPageProps) {
     return true;
   });
 
-  async function handleDelete(id: string) {
-    const usedByMembers = (await store.members.list(organization.id)).some((m) => m.roleId === id);
+  async function requestDelete(role: Role) {
+    const usedByMembers = (await store.members.list(organization.id)).some((m) => m.roleId === role.id);
     if (usedByMembers) {
-      alert('Este cargo tem membros vinculados — reatribua-os antes de excluir.');
+      setBlockedDeleteRole(role);
       return;
     }
-    await store.roles.remove(id);
+    setDeleteTarget(role);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    await store.roles.remove(deleteTarget.id);
+    setDeleteTarget(null);
     refresh();
   }
 
@@ -51,14 +59,14 @@ export function RolesPage({ organization }: RolesPageProps) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Cargos</h1>
-        {!creating && (
-          <Button variant="primary" onClick={() => setCreating(true)}>
+        {!editing && (
+          <Button variant="primary" onClick={() => setEditing('new')}>
             Novo cargo
           </Button>
         )}
       </div>
 
-      {!creating && (
+      {!editing && (
         <>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={inputStyle}>
@@ -100,9 +108,14 @@ export function RolesPage({ organization }: RolesPageProps) {
                     </Badge>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}>
-                  Remover
-                </Button>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>
+                    Editar
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => requestDelete(r)}>
+                    Remover
+                  </Button>
+                </div>
               </li>
             ))}
             {filteredRoles.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}>Nenhum cargo encontrado.</li>}
@@ -110,18 +123,39 @@ export function RolesPage({ organization }: RolesPageProps) {
         </>
       )}
 
-      {creating && (
+      {editing && (
         <RoleForm
           organization={organization}
           categories={categories}
           competencies={competencies}
-          onCancel={() => setCreating(false)}
+          initialRole={editing === 'new' ? undefined : editing}
+          onCancel={() => setEditing(null)}
           onSaved={() => {
-            setCreating(false);
+            setEditing(null);
             refresh();
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={`Remover "${deleteTarget?.name}"?`}
+        description="Essa ação não pode ser desfeita."
+        confirmLabel="Remover"
+        tone="danger"
+        onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        open={!!blockedDeleteRole}
+        onOpenChange={(open) => !open && setBlockedDeleteRole(null)}
+        title="Não é possível remover este cargo"
+        description={`"${blockedDeleteRole?.name}" tem membros vinculados. Reatribua-os a outro cargo antes de excluir.`}
+        confirmLabel="Entendi"
+        cancelLabel="Fechar"
+        onConfirm={() => setBlockedDeleteRole(null)}
+      />
     </div>
   );
 }
@@ -130,16 +164,19 @@ interface RoleFormProps {
   organization: Organization;
   categories: Category[];
   competencies: Competency[];
+  initialRole?: Role;
   onCancel: () => void;
   onSaved: () => void;
 }
 
-function RoleForm({ organization, categories, competencies, onCancel, onSaved }: RoleFormProps) {
-  const [name, setName] = React.useState('');
-  const [type, setType] = React.useState(organization.roleTypes[0] ?? 'associado');
-  const [activities, setActivities] = React.useState<string[]>([]);
+function RoleForm({ organization, categories, competencies, initialRole, onCancel, onSaved }: RoleFormProps) {
+  const [name, setName] = React.useState(initialRole?.name ?? '');
+  const [type, setType] = React.useState(initialRole?.type ?? organization.roleTypes[0] ?? 'associado');
+  const [activities, setActivities] = React.useState<string[]>(initialRole?.activities.map((a) => a.text) ?? []);
   const [newActivity, setNewActivity] = React.useState('');
-  const [links, setLinks] = React.useState<Map<string, Set<string>>>(new Map());
+  const [links, setLinks] = React.useState<Map<string, Set<string>>>(
+    () => new Map(initialRole?.competencyLinks.map((l) => [l.competencyId, new Set(l.selectedQuestionIds)]) ?? [])
+  );
 
   const competenciesByCategory = React.useMemo(() => {
     const map = new Map<string, Competency[]>();
@@ -184,19 +221,23 @@ function RoleForm({ organization, categories, competencies, onCancel, onSaved }:
     e.preventDefault();
     if (!name.trim()) return;
 
-    // Created in two steps because RoleActivity/RoleCompetencyLink carry the
-    // parent roleId, which only exists once the role itself has an id.
-    const role = await store.roles.create({
-      organizationId: organization.id,
-      name: name.trim(),
-      type,
-      activities: [],
-      competencyLinks: [],
-    });
+    const roleId = initialRole
+      ? initialRole.id
+      : (
+          // Created in two steps because RoleActivity/RoleCompetencyLink carry
+          // the parent roleId, which only exists once the role itself has one.
+          await store.roles.create({
+            organizationId: organization.id,
+            name: name.trim(),
+            type,
+            activities: [],
+            competencyLinks: [],
+          })
+        ).id;
 
     const roleActivities: RoleActivity[] = activities.map((text, order) => ({
-      id: `${role.id}-act-${order}`,
-      roleId: role.id,
+      id: `${roleId}-act-${order}`,
+      roleId,
       text,
       order,
     }));
@@ -204,12 +245,12 @@ function RoleForm({ organization, categories, competencies, onCancel, onSaved }:
     const competencyLinks: RoleCompetencyLink[] = Array.from(links.entries())
       .filter(([, ids]) => ids.size > 0)
       .map(([competencyId, ids]) => ({
-        roleId: role.id,
+        roleId,
         competencyId,
         selectedQuestionIds: Array.from(ids),
       }));
 
-    await store.roles.update(role.id, { activities: roleActivities, competencyLinks });
+    await store.roles.update(roleId, { name: name.trim(), type, activities: roleActivities, competencyLinks });
     onSaved();
   }
 
@@ -303,7 +344,7 @@ function RoleForm({ organization, categories, competencies, onCancel, onSaved }:
 
       <div style={{ display: 'flex', gap: 8 }}>
         <Button type="submit" variant="primary">
-          Salvar cargo
+          {initialRole ? 'Salvar alterações' : 'Salvar cargo'}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
