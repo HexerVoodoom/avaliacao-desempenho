@@ -17,7 +17,10 @@ export interface RunnerSection {
 }
 
 export interface ItemResponse {
-  score: ScoreValue;
+  // Optional on purpose: a response record can exist (e.g. the evaluator
+  // typed a keyword) before a score was ever chosen. Defaulting this to a
+  // score value was a real bug — see EvaluationRunner.setKeyword.
+  score?: ScoreValue;
   keywords?: [string, string, string];
 }
 

@@ -1,11 +1,12 @@
 import * as React from 'react';
 import type { Category, Competency, EvaluationType, Member, Organization, Role } from '@studio/domain';
-import { Button, Badge } from '@studio/ui';
+import { Button, Badge, ConfirmDialog } from '@studio/ui';
 import { store } from '../store';
 import { buildSections } from './buildSections';
 import { EvaluationRunner } from './EvaluationRunner';
 import { ResultScreen } from './ResultScreen';
 import { EVALUATION_TYPE_LABEL, type RunnerResult, type RunnerSection } from './types';
+import { PersonPicker } from './PersonPicker';
 
 interface NewEvaluationWizardProps {
   organization: Organization;
@@ -16,6 +17,7 @@ type Step = 'setup' | 'run' | 'saving' | 'save-failed' | 'result';
 
 export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizardProps) {
   const [step, setStep] = React.useState<Step>('setup');
+  const [membersLoaded, setMembersLoaded] = React.useState(false);
   const [members, setMembers] = React.useState<Member[]>([]);
   const [roles, setRoles] = React.useState<Role[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
@@ -30,6 +32,7 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
   const [runnerResult, setRunnerResult] = React.useState<RunnerResult | null>(null);
   const [createdAt, setCreatedAt] = React.useState('');
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [confirmingDiscard, setConfirmingDiscard] = React.useState(false);
 
   React.useEffect(() => {
     Promise.all([
@@ -42,6 +45,7 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
       setRoles(r);
       setCategories(cats);
       setCompetencies(comps);
+      setMembersLoaded(true);
     });
   }, [organization.id]);
 
@@ -94,11 +98,15 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
       });
 
       await store.evaluations.update(evaluation.id, {
+        // EvaluationRunner only calls onFinish once every item across every
+        // section has a defined score (allSectionsAnswered) — so `r.score`
+        // is guaranteed here even though ItemResponse.score is optional
+        // while the evaluator is still filling the form in.
         responses: Object.entries(result.responses).map(([targetId, r]) => ({
           id: `${evaluation.id}-${targetId}`,
           evaluationId: evaluation.id,
           targetId,
-          score: r.score,
+          score: r.score!,
           keywords: r.keywords,
         })),
         sectionNotes: Object.entries(result.sectionNotes).map(([categoryId, n]) => ({
@@ -118,7 +126,11 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
   }
 
   if (step === 'saving') {
-    return <p style={{ color: 'var(--color-text-muted)' }}>Salvando avaliação…</p>;
+    return (
+      <p role="status" aria-live="polite" style={{ color: 'var(--color-text-muted)' }}>
+        Salvando avaliação… Suas respostas já foram registradas nesta tela.
+      </p>
+    );
   }
 
   if (step === 'save-failed') {
@@ -127,17 +139,27 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
         <h1 style={{ fontSize: 'var(--font-size-xl)', color: 'var(--color-danger)' }}>
           Não foi possível salvar a avaliação
         </h1>
-        <p style={{ color: 'var(--color-text-muted)' }}>
+        <p role="status" aria-live="assertive" style={{ color: 'var(--color-text-muted)' }}>
           Suas respostas continuam nesta tela — nada foi perdido. Erro: {saveError}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="primary" onClick={() => runnerResult && persist(runnerResult)}>
             Tentar salvar de novo
           </Button>
-          <Button variant="ghost" onClick={onDone}>
+          <Button variant="ghost" onClick={() => setConfirmingDiscard(true)}>
             Sair sem salvar
           </Button>
         </div>
+        <ConfirmDialog
+          open={confirmingDiscard}
+          onOpenChange={setConfirmingDiscard}
+          title="Sair sem salvar esta avaliação?"
+          description="A avaliação está totalmente preenchida, mas ainda não foi gravada. Saindo agora, todas as respostas serão perdidas. Essa ação não pode ser desfeita."
+          confirmLabel="Sair sem salvar"
+          cancelLabel="Voltar"
+          tone="danger"
+          onConfirm={onDone}
+        />
       </div>
     );
   }
@@ -168,21 +190,31 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
     );
   }
 
+  if (membersLoaded && members.length === 0) {
+    return (
+      <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h1 style={{ fontSize: 'var(--font-size-xl)' }}>Nova avaliação</h1>
+        <p style={{ color: 'var(--color-text-muted)' }}>
+          Nenhuma pessoa cadastrada ainda. Cadastre pelo menos um membro em Pessoas antes de aplicar uma avaliação.
+        </p>
+        <Button variant="ghost" onClick={onDone}>
+          Voltar
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h1 style={{ fontSize: 'var(--font-size-2xl)' }}>Nova avaliação</h1>
 
-      <label style={fieldLabelStyle}>
-        Avaliador (quem está aplicando)
-        <select style={inputStyle} value={evaluatorId} onChange={(e) => setEvaluatorId(e.target.value)}>
-          <option value="">Selecione...</option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.firstName} {m.lastName} — {roleById.get(m.roleId)?.name ?? 'sem cargo'}
-            </option>
-          ))}
-        </select>
-      </label>
+      <PersonPicker
+        label="Avaliador (quem está aplicando)"
+        members={members}
+        roleById={roleById}
+        selectedId={evaluatorId}
+        onSelect={setEvaluatorId}
+      />
 
       <label style={fieldLabelStyle}>
         Filtrar avaliado(a) por cargo (opcional)
@@ -196,22 +228,21 @@ export function NewEvaluationWizard({ organization, onDone }: NewEvaluationWizar
         </select>
       </label>
 
-      <label style={fieldLabelStyle}>
-        Avaliado(a)
-        <select style={inputStyle} value={evaluateeId} onChange={(e) => setEvaluateeId(e.target.value)}>
-          <option value="">Selecione...</option>
-          {filteredEvaluatees.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.firstName} {m.lastName} — {roleById.get(m.roleId)?.name ?? 'sem cargo'}
-            </option>
-          ))}
-        </select>
-      </label>
+      <PersonPicker
+        label="Avaliado(a)"
+        members={filteredEvaluatees}
+        roleById={roleById}
+        selectedId={evaluateeId}
+        onSelect={setEvaluateeId}
+      />
 
       {evaluateeRole && (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Badge tone="primary">{evaluateeRole.type}</Badge>
           <Badge tone="neutral">{evaluateeRole.name}</Badge>
+          <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
+            (ⓘ cargo do cadastro da pessoa — define os critérios da avaliação, não é editável aqui)
+          </span>
         </div>
       )}
 
