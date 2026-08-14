@@ -20,6 +20,13 @@ const CSS_VAR_MAP: Record<keyof DesignTokens, string | null> = {
   logoUrlDark: null,
   faviconUrl: null,
   density: null,
+  // Asset URLs consumed directly by page components (e.g. HomePage), not
+  // applied as CSS custom properties.
+  backgroundImageUrl: null,
+  footerLogoUrl: null,
+  footerIconUrl: null,
+  footerText: null,
+  footerSubtext: null,
 };
 
 export function applyDesignTokens(target: HTMLElement, tokens: Partial<DesignTokens>): void {
